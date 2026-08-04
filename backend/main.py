@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+from prompt_builder import build_policy_prompt
+
 app = FastAPI()
 
 
@@ -18,11 +20,12 @@ def home():
 
 @app.post("/generate-policy")
 def generate_policy(request: PolicyRequest):
-    return {
-        "message": "Questionnaire received successfully!",
-        "company_name": request.company_name,
-        "policy_type": request.policy_type,
-        "tone": request.tone,
-        "requirements": request.requirements,
-    }
+    prompt = build_policy_prompt(
+        company_name=request.company_name,
+        policy_type=request.policy_type,
+        tone=request.tone,
+        requirements=request.requirements,
+    )
+
+    return {"prompt": prompt}
     
