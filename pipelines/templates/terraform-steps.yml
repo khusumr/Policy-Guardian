@@ -1,0 +1,81 @@
+# Reusable steps for running Terraform against a given environment.
+# Consumed via `template` from the main pipeline stages.
+#
+# Expects these pipeline variables to already be set (via variable group):
+#   TF_STATE_RG, TF_STATE_SA, TF_STATE_CONTAINER  -> remote state backend
+#   AZURE_SERVICE_CONNECTION                      -> ARM service connection name
+#
+# Parameters:
+#   environment   : 'dev' | 'prod'
+#   command       : 'plan' | 'apply'
+#   workingDir    : path to the terraform root module
+
+parameters:
+  - name: environment
+    type: string
+  - name: command
+    type: string
+    values:
+      - plan
+      - apply
+  - name: workingDir
+    type: string
+    default: 'infra/terraform'
+
+steps:
+  - task: TerraformInstaller@1
+    displayName: 'Install Terraform'
+    inputs:
+      terraformVersion: '1.7.5'
+
+  - task: AzureCLI@2
+    displayName: 'Terraform Init (${{ parameters.environment }})'
+    inputs:
+      azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
+      scriptType: bash
+      scriptLocation: inlineScript
+      workingDirectory: '${{ parameters.workingDir }}'
+      inlineScript: |
+        set -e
+        terraform init \
+          -backend-config="resource_group_name=$(TF_STATE_RG)" \
+          -backend-config="storage_account_name=$(TF_STATE_SA)" \
+          -backend-config="container_name=$(TF_STATE_CONTAINER)" \
+          -backend-config="key=${{ parameters.environment }}.terraform.tfstate"
+
+  - task: AzureCLI@2
+    displayName: 'Terraform Validate & fmt check'
+    inputs:
+      azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
+      scriptType: bash
+      scriptLocation: inlineScript
+      workingDirectory: '${{ parameters.workingDir }}'
+      inlineScript: |
+        set -e
+        terraform fmt -check -recursive
+        terraform validate
+
+  - task: AzureCLI@2
+    displayName: 'Terraform Plan (${{ parameters.environment }})'
+    inputs:
+      azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
+      scriptType: bash
+      scriptLocation: inlineScript
+      workingDirectory: '${{ parameters.workingDir }}'
+      inlineScript: |
+        set -e
+        terraform plan \
+          -var-file="environments/${{ parameters.environment }}.tfvars" \
+          -out="${{ parameters.environment }}.tfplan"
+
+  - ${{ if eq(parameters.command, 'apply') }}:
+      - task: AzureCLI@2
+        displayName: 'Terraform Apply (${{ parameters.environment }})'
+        inputs:
+          azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
+          scriptType: bash
+          scriptLocation: inlineScript
+          workingDirectory: '${{ parameters.workingDir }}'
+          inlineScript: |
+            set -e
+            terraform apply -auto-approve "${{ parameters.environment }}.tfplan"

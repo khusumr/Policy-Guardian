@@ -1,0 +1,47 @@
+# PR Validation Pipeline
+# Runs on every PR into main. Never deploys or applies infra — it only
+# proves the PR builds, passes tests, and that the Terraform plan is clean.
+# Create this as a separate Azure DevOps pipeline and set it as a required
+# branch policy check on `main` (Repo Settings > Branch Policies > main).
+
+trigger: none
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - group: bugbusters-common # AZURE_SERVICE_CONNECTION, TF_STATE_* vars
+  - group: bugbusters-dev    # dev-scoped secrets, used just to validate the plan
+
+stages:
+  - stage: Validate
+    displayName: 'Lint, Test, Plan'
+    jobs:
+      - job: BackendChecks
+        displayName: 'Backend (Python)'
+        steps:
+          - template: templates/backend-steps.yml
+            parameters:
+              pythonVersion: '3.11'
+              workingDir: 'backend'
+
+      - job: FrontendChecks
+        displayName: 'Frontend (React)'
+        steps:
+          - template: templates/frontend-steps.yml
+            parameters:
+              nodeVersion: '20.x'
+              workingDir: 'frontend'
+
+      - job: TerraformPlan
+        displayName: 'Terraform Plan (dev)'
+        steps:
+          - template: templates/terraform-steps.yml
+            parameters:
+              environment: 'dev'
+              command: 'plan'
