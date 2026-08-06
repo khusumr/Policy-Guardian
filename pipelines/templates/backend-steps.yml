@@ -1,0 +1,65 @@
+# Build, lint and test the Python backend.
+# Assumes backend code lives in /backend with a requirements.txt and a
+# requirements-dev.txt (pytest, flake8/ruff, etc).
+
+parameters:
+  - name: pythonVersion
+    type: string
+    default: '3.11'
+  - name: workingDir
+    type: string
+    default: 'backend'
+
+steps:
+  - task: UsePythonVersion@0
+    displayName: 'Use Python ${{ parameters.pythonVersion }}'
+    inputs:
+      versionSpec: '${{ parameters.pythonVersion }}'
+
+  - script: |
+      set -e
+      python -m pip install --upgrade pip
+      pip install -r requirements.txt
+      if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+    displayName: 'Install dependencies'
+    workingDirectory: '${{ parameters.workingDir }}'
+
+  - script: |
+      set -e
+      pip install ruff || true
+      ruff check . || echo "##vso[task.logissue type=warning]Lint issues found"
+    displayName: 'Lint (ruff)'
+    workingDirectory: '${{ parameters.workingDir }}'
+    continueOnError: true
+
+  - script: |
+      set -e
+      pip install pytest pytest-cov
+      pytest --junitxml=test-results.xml --cov=. --cov-report=xml
+    displayName: 'Run tests (pytest)'
+    workingDirectory: '${{ parameters.workingDir }}'
+
+  - task: PublishTestResults@2
+    displayName: 'Publish test results'
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFormat: 'JUnit'
+      testResultsFiles: '${{ parameters.workingDir }}/test-results.xml'
+
+  - task: PublishCodeCoverageResults@2
+    displayName: 'Publish coverage'
+    condition: succeededOrFailed()
+    inputs:
+      summaryFileLocation: '${{ parameters.workingDir }}/coverage.xml'
+
+  - script: |
+      set -e
+      mkdir -p $(Build.ArtifactStagingDirectory)/backend
+      # zip everything except venvs/tests/caches so the App Service deploy is lean
+      zip -r $(Build.ArtifactStagingDirectory)/backend/backend.zip . \
+        -x "*.git*" -x "__pycache__/*" -x "*.pytest_cache*" -x "tests/*" -x "*.venv*"
+    displayName: 'Package backend as zip'
+    workingDirectory: '${{ parameters.workingDir }}'
+
+  - publish: $(Build.ArtifactStagingDirectory)/backend/backend.zip
+    artifact: backend-package

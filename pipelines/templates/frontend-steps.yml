@@ -1,0 +1,58 @@
+# Build, lint and test the React frontend.
+# Assumes frontend code lives in /frontend with a standard CRA/Vite package.json
+# (scripts: lint, test, build).
+
+parameters:
+  - name: nodeVersion
+    type: string
+    default: '20.x'
+  - name: workingDir
+    type: string
+    default: 'frontend'
+
+steps:
+  - task: NodeTool@0
+    displayName: 'Use Node.js ${{ parameters.nodeVersion }}'
+    inputs:
+      versionSpec: '${{ parameters.nodeVersion }}'
+
+  - script: npm ci
+    displayName: 'Install dependencies'
+    workingDirectory: '${{ parameters.workingDir }}'
+
+  - script: npm run lint --if-present
+    displayName: 'Lint'
+    workingDirectory: '${{ parameters.workingDir }}'
+    continueOnError: true
+
+  - script: |
+      # CI=true prevents CRA's test watcher from hanging the pipeline
+      CI=true npm test -- --watchAll=false --ci --reporters=default --reporters=junit
+    displayName: 'Run tests (jest)'
+    workingDirectory: '${{ parameters.workingDir }}'
+    env:
+      JEST_JUNIT_OUTPUT_DIR: './test-results'
+
+  - task: PublishTestResults@2
+    displayName: 'Publish test results'
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFormat: 'JUnit'
+      testResultsFiles: '${{ parameters.workingDir }}/test-results/*.xml'
+
+  - script: npm run build
+    displayName: 'Build production bundle'
+    workingDirectory: '${{ parameters.workingDir }}'
+    env:
+      REACT_APP_API_BASE_URL: $(REACT_APP_API_BASE_URL)
+
+  - script: |
+      set -e
+      mkdir -p $(Build.ArtifactStagingDirectory)/frontend
+      cd build
+      zip -r $(Build.ArtifactStagingDirectory)/frontend/frontend.zip .
+    displayName: 'Package frontend build as zip'
+    workingDirectory: '${{ parameters.workingDir }}'
+
+  - publish: $(Build.ArtifactStagingDirectory)/frontend/frontend.zip
+    artifact: frontend-package

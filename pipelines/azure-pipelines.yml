@@ -1,0 +1,126 @@
+# Main CI/CD Pipeline — AI Policy Generator
+# Source repo: https://github.com/khusumr/Buggies (connected to this Azure
+# DevOps project via a GitHub service connection).
+#
+# Flow on every push to `main`:
+#   1. Build & test backend and frontend in parallel
+#   2. Provision/update dev infra with Terraform, deploy both apps to dev
+#   3. Wait for manual approval (configured on the `bugbusters-prod`
+#      Environment in Azure DevOps > Pipelines > Environments)
+#   4. Provision/update prod infra with Terraform, deploy both apps to prod
+#
+# This file lives at the repo root as azure-pipelines.yml.
+
+trigger:
+  branches:
+    include:
+      - main
+
+pr: none # PR validation is a separate pipeline: pipelines/pr-validation.yml
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - group: bugbusters-common # AZURE_SERVICE_CONNECTION, TF_STATE_RG, TF_STATE_SA, TF_STATE_CONTAINER
+
+stages:
+  # -------------------------------------------------------------------------
+  - stage: BuildAndTest
+    displayName: 'Build & Test'
+    jobs:
+      - job: Backend
+        displayName: 'Backend (Python)'
+        steps:
+          - template: pipelines/templates/backend-steps.yml
+            parameters:
+              pythonVersion: '3.11'
+              workingDir: 'backend'
+
+      - job: Frontend
+        displayName: 'Frontend (React)'
+        variables:
+          - group: bugbusters-dev # provides REACT_APP_API_BASE_URL for the dev build
+        steps:
+          - template: pipelines/templates/frontend-steps.yml
+            parameters:
+              nodeVersion: '20.x'
+              workingDir: 'frontend'
+
+  # -------------------------------------------------------------------------
+  - stage: DeployDev
+    displayName: 'Provision & Deploy — Dev'
+    dependsOn: BuildAndTest
+    condition: succeeded()
+    variables:
+      - group: bugbusters-dev
+    jobs:
+      - job: TerraformApplyDev
+        displayName: 'Terraform Apply (dev)'
+        steps:
+          - template: pipelines/templates/terraform-steps.yml
+            parameters:
+              environment: 'dev'
+              command: 'apply'
+
+      - deployment: DeployAppsDev
+        displayName: 'Deploy apps to dev'
+        dependsOn: TerraformApplyDev
+        environment: 'bugbusters-dev'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: backend-package
+                - download: current
+                  artifact: frontend-package
+                - template: pipelines/templates/deploy-webapp-steps.yml
+                  parameters:
+                    appName: 'app-bugbusters-api-dev'
+                    packagePath: '$(Pipeline.Workspace)/backend-package/backend.zip'
+                - template: pipelines/templates/deploy-webapp-steps.yml
+                  parameters:
+                    appName: 'app-bugbusters-web-dev'
+                    packagePath: '$(Pipeline.Workspace)/frontend-package/frontend.zip'
+
+  # -------------------------------------------------------------------------
+  # Deploying to `bugbusters-prod` Environment automatically pauses here for
+  # manual approval — set that up once in Azure DevOps:
+  # Pipelines > Environments > bugbusters-prod > Approvals and checks.
+  # -------------------------------------------------------------------------
+  - stage: DeployProd
+    displayName: 'Provision & Deploy — Prod'
+    dependsOn: DeployDev
+    condition: succeeded()
+    variables:
+      - group: bugbusters-prod
+    jobs:
+      - job: TerraformApplyProd
+        displayName: 'Terraform Apply (prod)'
+        steps:
+          - template: pipelines/templates/terraform-steps.yml
+            parameters:
+              environment: 'prod'
+              command: 'apply'
+
+      - deployment: DeployAppsProd
+        displayName: 'Deploy apps to prod'
+        dependsOn: TerraformApplyProd
+        environment: 'bugbusters-prod' # approval gate lives on this Environment
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: backend-package
+                - download: current
+                  artifact: frontend-package
+                - template: pipelines/templates/deploy-webapp-steps.yml
+                  parameters:
+                    appName: 'app-bugbusters-api-prod'
+                    packagePath: '$(Pipeline.Workspace)/backend-package/backend.zip'
+                - template: pipelines/templates/deploy-webapp-steps.yml
+                  parameters:
+                    appName: 'app-bugbusters-web-prod'
+                    packagePath: '$(Pipeline.Workspace)/frontend-package/frontend.zip'
