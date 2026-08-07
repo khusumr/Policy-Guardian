@@ -2,12 +2,13 @@ from enum import Enum
 
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
+from openai_service import OpenAIService
 
 from prompt_builder import build_policy_prompt
 
-
 app = FastAPI()
 
+openai_service = OpenAIService()
 
 class PolicyType(str, Enum):
     work_from_home = "Work From Home"
@@ -51,7 +52,7 @@ def home():
 
 
 @app.post("/generate-policy")
-def generate_policy(request: PolicyRequest):
+def generate_policy_endpoint(request: PolicyRequest):
     prompt = build_policy_prompt(
         company_name=request.company_name,
         policy_type=request.policy_type.value,
@@ -59,4 +60,8 @@ def generate_policy(request: PolicyRequest):
         requirements=request.requirements,
     )
 
-    return {"prompt": prompt}
+    policy = openai_service.generate_policy(prompt)
+
+    return {
+        "policy": policy
+    }
