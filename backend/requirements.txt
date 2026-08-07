@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pydantic
+python-dotenv
+openai
+azure-storage-blob
+azure-search-documents
+pytest
+httpx
