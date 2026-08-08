@@ -7,3 +7,4 @@ azure-storage-blob
 azure-search-documents
 pytest
 httpx
+python-docx
