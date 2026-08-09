@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
+import HRDashboard from "./pages/HRDashboard";
 import "./App.css";
 
 function App() {
@@ -11,7 +11,7 @@ function App() {
       {user === null ? (
         <Login setUser={setUser} />
       ) : (
-        <Dashboard user={user} />
+        <HRDashboard user={user} />
       )}
     </>
   );
