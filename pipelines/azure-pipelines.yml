@@ -1,0 +1,62 @@
+# Main CI/CD Pipeline — AI Policy Generator (real team repo, Bug Busters / Intern2026)
+#
+# Flow on every push to main:
+#   1. Build & test backend
+#   2. Terraform plan+apply (provisions/updates the App Service + storage)
+#   3. Deploy backend to the App Service
+#
+# Kept to a single environment for now since there's no dev/prod split in
+# the actual terraform yet — add that split later by branching main.tf into
+# environment .tfvars the way the earlier draft did, once the team wants it.
+
+trigger:
+  branches:
+    include:
+      - main
+
+pr: none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - group: bugbusters-common # AZURE_SERVICE_CONNECTION, TF_STATE_RG, TF_STATE_SA, TF_STATE_CONTAINER, RESOURCE_GROUP
+
+stages:
+  - stage: BuildAndTest
+    displayName: 'Build & Test'
+    jobs:
+      - job: Backend
+        displayName: 'Backend (Python)'
+        steps:
+          - template: pipelines/templates/backend-steps.yml
+            parameters:
+              pythonVersion: '3.11'
+              workingDir: 'backend'
+
+  - stage: ProvisionAndDeploy
+    displayName: 'Provision & Deploy'
+    dependsOn: BuildAndTest
+    condition: succeeded()
+    jobs:
+      - job: TerraformApply
+        displayName: 'Terraform Apply'
+        steps:
+          - template: pipelines/templates/terraform-steps.yml
+            parameters:
+              command: 'apply'
+
+      - deployment: DeployBackend
+        displayName: 'Deploy backend'
+        dependsOn: TerraformApply
+        environment: 'bugbusters-app'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: backend-package
+                - template: pipelines/templates/deploy-webapp-steps.yml
+                  parameters:
+                    appName: 'app-ai-policy-backend'
+                    packagePath: '$(Pipeline.Workspace)/backend-package/backend.zip'
