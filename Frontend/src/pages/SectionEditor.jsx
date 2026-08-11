@@ -1,16 +1,17 @@
 import { useRef, useState } from "react";
 import AIResponsePanel from "../components/ai/AIResponsePanel";
-import { savePolicy, sendPolicyToEmployees, MOCK_EMPLOYEES } from "../data/store";
+import { saveSection } from "../data/store";
 
-// Note: this uses a <textarea>, not rendered text, so it can't use the
-// Highlighter component (window.getSelection doesn't see into form
-// inputs). Instead it tracks selectionStart/selectionEnd directly.
+// Edits one section of one role's policy. Uses a <textarea>, not
+// rendered text, so it can't use the Highlighter component
+// (window.getSelection doesn't see into form inputs). Instead it
+// tracks selectionStart/selectionEnd directly.
 
-function PolicyEditor({ policy, onUpdated }) {
-  const [content, setContent] = useState(policy.content);
-  const [sent, setSent] = useState(false);
+function SectionEditor({ section, onUpdated }) {
+  const [content, setContent] = useState(section.content);
   const [selection, setSelection] = useState({ text: "", start: 0, end: 0 });
   const [aiMode, setAiMode] = useState(null); // null | "ask" | "reword"
+  const [savedNote, setSavedNote] = useState(false);
   const textareaRef = useRef(null);
 
   function handleSelect() {
@@ -25,14 +26,11 @@ function PolicyEditor({ policy, onUpdated }) {
   }
 
   function handleSave() {
-    savePolicy({ ...policy, content });
-    onUpdated({ ...policy, content });
-  }
-
-  function handleSend() {
-    handleSave();
-    sendPolicyToEmployees(policy.id, MOCK_EMPLOYEES);
-    setSent(true);
+    const updated = { ...section, content, updatedAt: new Date().toISOString() };
+    saveSection(updated);
+    onUpdated(updated);
+    setSavedNote(true);
+    setTimeout(() => setSavedNote(false), 2000);
   }
 
   function handleApplyReword(newText) {
@@ -44,9 +42,9 @@ function PolicyEditor({ policy, onUpdated }) {
 
   return (
     <div className="policy-editor">
-      <h1>{policy.title}</h1>
+      <h1>{section.title}</h1>
       <p className="editor-hint">
-        Highlight text below, then ask AI about it or have AI reword it.
+        {section.role} section · Highlight text below, then ask AI about it or have AI reword it.
       </p>
 
       <textarea
@@ -70,12 +68,14 @@ function PolicyEditor({ policy, onUpdated }) {
         <button className="save-button" onClick={handleSave}>
           Save
         </button>
-        <button className="send-button" onClick={handleSend}>
-          Send to Employees
-        </button>
       </div>
 
-      {sent && <p className="sent-confirmation">Sent to employees.</p>}
+      {savedNote && <p className="sent-confirmation">Saved.</p>}
+
+      <p className="editor-note">
+        This section saves on its own. Go to the "Overall" tab for the {section.role} role to
+        review the full combined policy and send it to employees.
+      </p>
 
       {aiMode && (
         <AIResponsePanel
@@ -90,4 +90,4 @@ function PolicyEditor({ policy, onUpdated }) {
   );
 }
 
-export default PolicyEditor;
+export default SectionEditor;

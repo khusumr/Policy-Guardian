@@ -23,6 +23,18 @@ export async function rewordText(instruction, highlightedText) {
   );
 }
 
+export async function askLawyer(question) {
+  await delay(700);
+
+  return (
+    `Disclaimer: this is a placeholder legal assistant for prototyping only, not real legal advice.\n\n` +
+    `Regarding "${trim(question, 80)}" — you'd want a licensed employment attorney to confirm this for ` +
+    `your specific state and industry, but generally a clause like this should reference the applicable ` +
+    `state and federal requirements explicitly. (Placeholder response — connect a real legal AI backend ` +
+    `to replace this.)`
+  );
+}
+
 function trim(text, max = 120) {
   if (text.length <= max) return text;
   return text.slice(0, max) + "…";

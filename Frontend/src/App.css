@@ -145,6 +145,7 @@ body {
 
   padding: 40px;
   background: white;
+  color: #111827;
   overflow-y: auto;
   position: relative;
 }
@@ -196,6 +197,33 @@ body {
   font-size: 14px;
   min-height: 70px;
   resize: vertical;
+  color: #111827;
+  background: white;
+}
+
+.questionnaire-field input {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  color: #111827;
+  background: white;
+}
+
+.questionnaire-field select {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  color: #111827;
+  background: white;
+}
+
+.questionnaire-field select option {
+  color: #111827;
+  background: white;
 }
 
 
@@ -305,8 +333,14 @@ body {
   border-radius: 8px;
   padding: 20px;
   margin-top: 10px;
+  margin-bottom: 20px;
   line-height: 1.6;
   user-select: text;
+}
+
+.policy-text h2 {
+  margin-top: 0;
+  font-size: 18px;
 }
 
 .sign-button {
@@ -452,5 +486,216 @@ body {
 .ai-suggestion-note {
   margin-top: 10px;
   font-size: 12px;
+  color: #9ca3af;
+}
+
+
+/* ROLE FOLDERS (HR sidebar) */
+
+.role-folder {
+  margin-bottom: 6px;
+}
+
+.role-folder-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+
+  color: #c7c7cf;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+
+  cursor: pointer;
+}
+
+.role-folder-header:hover {
+  background: #2a2b2e;
+  color: white;
+}
+
+.role-folder-chevron {
+  width: 12px;
+}
+
+.role-folder-label {
+  flex: 1;
+  text-align: left;
+}
+
+.role-folder-count {
+  background: #343541;
+  color: #c7c7cf;
+  border-radius: 999px;
+  font-size: 11px;
+  padding: 2px 7px;
+}
+
+.role-folder-body {
+  padding-left: 10px;
+  margin-bottom: 6px;
+}
+
+.tab-nested {
+  padding: 9px 12px;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.tab-active {
+  background: #2563eb !important;
+}
+
+.tab-add {
+  background: transparent;
+  border: 1px dashed #4b4d54;
+  color: #9a9ba3;
+}
+
+.tab-add:hover {
+  color: white;
+  border-color: #6b6d76;
+}
+
+.tab-pending {
+  background: transparent;
+  border: 1px dashed #4b4d54;
+  color: #9a9ba3;
+}
+
+.tab-pending:hover {
+  background: #2a2b2e;
+  color: white;
+  border-color: #6b6d76;
+}
+
+.tab-pending .tab-status {
+  color: #f59e0b;
+}
+
+.sidebar-new-role-form {
+  margin-bottom: 16px;
+}
+
+.sidebar-empty-nested {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+
+/* TEMPLATE / ROLE PICKER (Questionnaire steps) */
+
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+  max-width: 700px;
+  margin: 20px 0;
+}
+
+.template-card {
+  text-align: left;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: white;
+  color: #111827;
+  cursor: pointer;
+}
+
+.template-card:hover {
+  border-color: #2563eb;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+}
+
+.template-card h3 {
+  margin: 0 0 6px 0;
+  font-size: 16px;
+  color: #111827;
+}
+
+.template-card p {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.custom-role-form {
+  display: flex;
+  gap: 10px;
+  max-width: 400px;
+}
+
+.custom-role-form input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  color: #111827;
+  background: white;
+}
+
+.custom-role-form button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+}
+
+.custom-role-form button:disabled {
+  background: #93c5fd;
+  cursor: not-allowed;
+}
+
+.questionnaire-breadcrumb {
+  margin-bottom: 4px;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: #2563eb;
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
+}
+
+
+/* OVERALL POLICY VIEW (HR) */
+
+.overall-sections {
+  max-width: 800px;
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.overall-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
+  line-height: 1.6;
+  color: #111827;
+}
+
+.overall-section h2 {
+  margin-top: 0;
+  font-size: 18px;
+  color: #111827;
+}
+
+.editor-note {
+  margin-top: 16px;
+  font-size: 13px;
   color: #9ca3af;
 }

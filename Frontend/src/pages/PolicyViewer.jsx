@@ -1,9 +1,9 @@
 import { useState } from "react";
 import Highlighter from "../components/ai/Highlighter";
 import AIResponsePanel from "../components/ai/AIResponsePanel";
-import { signAssignment } from "../data/store";
+import { signAssignment, roleLabel } from "../data/store";
 
-function PolicyViewer({ policy, assignment, onSigned }) {
+function PolicyViewer({ assignment, onSigned }) {
   const [aiMode, setAiMode] = useState(null); // null | "ask" | "reword"
   const [highlightedText, setHighlightedText] = useState("");
 
@@ -14,7 +14,7 @@ function PolicyViewer({ policy, assignment, onSigned }) {
 
   return (
     <div className="policy-viewer">
-      <h1>{policy.title}</h1>
+      <h1>{roleLabel(assignment.role)} Policy</h1>
 
       {assignment.status === "signed" ? (
         <p className="signed-note">
@@ -34,11 +34,14 @@ function PolicyViewer({ policy, assignment, onSigned }) {
           setAiMode("reword");
         }}
       >
-        <div className="policy-text">
-          {policy.content.split("\n").map((line, i) => (
-            <p key={i}>{line}</p>
-          ))}
-        </div>
+        {assignment.parts.map((part) => (
+          <div className="policy-text" key={part.sectionId}>
+            <h2>{part.title}</h2>
+            {part.content.split("\n").map((line, i) => (
+              <p key={i}>{line}</p>
+            ))}
+          </div>
+        ))}
       </Highlighter>
 
       {assignment.status !== "signed" && (

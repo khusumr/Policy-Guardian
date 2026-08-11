@@ -1,9 +1,6 @@
-function EmployeeSidebar({ assignments, policies, onSelect }) {
-  function policyTitle(policyId) {
-    const policy = policies.find((p) => p.id === policyId);
-    return policy ? policy.title : "Untitled Policy";
-  }
+import { roleLabel } from "../../data/store";
 
+function EmployeeSidebar({ assignments, selectedId, onSelect }) {
   return (
     <div className="sidebar">
       <h2>My Policies</h2>
@@ -16,11 +13,12 @@ function EmployeeSidebar({ assignments, policies, onSelect }) {
         <button
           key={assignment.id}
           className={
-            assignment.status === "signed" ? "tab tab-signed" : "tab"
+            (assignment.status === "signed" ? "tab tab-signed" : "tab") +
+            (selectedId === assignment.id ? " tab-active" : "")
           }
           onClick={() => onSelect(assignment)}
         >
-          {policyTitle(assignment.policyId)}
+          {roleLabel(assignment.role)} Policy
           <span className="tab-status">
             {assignment.status === "signed" ? "Signed" : "Pending"}
           </span>
