@@ -1,0 +1,71 @@
+# Reusable steps for running Terraform. Adapted to THIS repo's structure:
+# terraform files live at /terraform (not /infra/terraform).
+#
+# Expects these pipeline variables via a variable group:
+#   AZURE_SERVICE_CONNECTION, TF_STATE_RG, TF_STATE_SA, TF_STATE_CONTAINER
+
+parameters:
+  - name: command
+    type: string
+    values:
+      - plan
+      - apply
+  - name: workingDir
+    type: string
+    default: 'terraform'
+
+steps:
+  - task: TerraformInstaller@1
+    displayName: 'Install Terraform'
+    inputs:
+      terraformVersion: '1.7.5'
+
+  - task: AzureCLI@2
+    displayName: 'Terraform Init'
+    inputs:
+      azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
+      scriptType: bash
+      scriptLocation: inlineScript
+      workingDirectory: '${{ parameters.workingDir }}'
+      inlineScript: |
+        set -e
+        terraform init \
+          -backend-config="resource_group_name=$(TF_STATE_RG)" \
+          -backend-config="storage_account_name=$(TF_STATE_SA)" \
+          -backend-config="container_name=$(TF_STATE_CONTAINER)" \
+          -backend-config="key=app.terraform.tfstate"
+
+  - task: AzureCLI@2
+    displayName: 'Terraform Validate & fmt check'
+    inputs:
+      azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
+      scriptType: bash
+      scriptLocation: inlineScript
+      workingDirectory: '${{ parameters.workingDir }}'
+      inlineScript: |
+        set -e
+        terraform fmt -check -recursive
+        terraform validate
+
+  - task: AzureCLI@2
+    displayName: 'Terraform Plan'
+    inputs:
+      azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
+      scriptType: bash
+      scriptLocation: inlineScript
+      workingDirectory: '${{ parameters.workingDir }}'
+      inlineScript: |
+        set -e
+        terraform plan -out=tfplan
+
+  - ${{ if eq(parameters.command, 'apply') }}:
+      - task: AzureCLI@2
+        displayName: 'Terraform Apply'
+        inputs:
+          azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
+          scriptType: bash
+          scriptLocation: inlineScript
+          workingDirectory: '${{ parameters.workingDir }}'
+          inlineScript: |
+            set -e
+            terraform apply -auto-approve tfplan

@@ -1,12 +1,15 @@
-resource "azurerm_resource_group" "main" {
-  name     = "ai-policy-generator-rg"
-  location = "West US 2"
+# Uses the resource group Quadrant already provisioned for us — do NOT
+# create a new one. Terraform will manage resources *inside* it without
+# taking ownership of (or being able to accidentally delete) the group
+# itself.
+data "azurerm_resource_group" "main" {
+  name = "BugBusters"
 }
 
 resource "azurerm_storage_account" "main" {
   name                     = "aipolicykhusum2026"
-  resource_group_name      = azurerm_resource_group.main.name
-  location                 = azurerm_resource_group.main.location
+  resource_group_name      = data.azurerm_resource_group.main.name
+  location                 = data.azurerm_resource_group.main.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
 
