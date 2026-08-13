@@ -29,7 +29,7 @@ stages:
       - job: Backend
         displayName: 'Backend (Python)'
         steps:
-          - template: pipelines/templates/backend-steps.yml
+          - template: templates/backend-steps.yml
             parameters:
               pythonVersion: '3.11'
               workingDir: 'backend'
@@ -42,7 +42,7 @@ stages:
       - job: TerraformApply
         displayName: 'Terraform Apply'
         steps:
-          - template: pipelines/templates/terraform-steps.yml
+          - template: templates/terraform-steps.yml
             parameters:
               command: 'apply'
 
@@ -56,7 +56,7 @@ stages:
               steps:
                 - download: current
                   artifact: backend-package
-                - template: pipelines/templates/deploy-webapp-steps.yml
+                - template: templates/deploy-webapp-steps.yml
                   parameters:
                     appName: 'app-ai-policy-backend'
                     packagePath: '$(Pipeline.Workspace)/backend-package/backend.zip'
