@@ -6,8 +6,14 @@ data "azurerm_resource_group" "main" {
   name = "BugBusters"
 }
 
+resource "random_string" "suffix" {
+  length  = 6
+  special = false
+  upper   = false
+}
+
 resource "azurerm_storage_account" "main" {
-  name                     = "aipolicykhusum2026"
+  name                     = "aipolicykhusum${random_string.suffix.result}"
   resource_group_name      = data.azurerm_resource_group.main.name
   location                 = data.azurerm_resource_group.main.location
   account_tier             = "Standard"
