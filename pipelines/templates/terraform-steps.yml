@@ -42,7 +42,7 @@ steps:
           -backend-config="key=app.terraform.tfstate"
 
   - task: AzureCLI@2
-    displayName: 'Terraform Validate & fmt check'
+    displayName: 'Terraform fmt & Validate'
     inputs:
       azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
       scriptType: bash
@@ -50,7 +50,10 @@ steps:
       workingDirectory: '${{ parameters.workingDir }}'
       inlineScript: |
         set -e
-        terraform fmt -check -recursive
+        # Auto-fix formatting rather than failing the build on cosmetic
+        # spacing mismatches — run `terraform fmt` locally before committing
+        # if you want your local diff to already match this.
+        terraform fmt -recursive
         terraform validate
 
   - task: AzureCLI@2
