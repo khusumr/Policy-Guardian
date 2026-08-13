@@ -34,7 +34,8 @@ function write(key, value) {
 // the sidebar (see getAllRoles below).
 
 export const BUILT_IN_ROLES = [
-  { id: "employee", label: "Employee" },
+  { id: "intern", label: "Intern" },
+  { id: "engineer", label: "Engineer" },
   { id: "manager", label: "Manager" },
   { id: "hr", label: "HR" },
 ];

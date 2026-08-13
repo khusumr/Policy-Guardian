@@ -18,6 +18,10 @@ function EmployeeDashboard({ user }) {
     );
   }
 
+  function goHome() {
+    setSelectedAssignment(null);
+  }
+
   return (
     <div className="dashboard">
       <EmployeeSidebar

@@ -5,17 +5,16 @@ function Login({ setUser }) {
   const [password, setPassword] = useState("");
 
   function login(e) {
-    e.preventDefault();
+  e.preventDefault();
 
-    if (
-      (username === "hr" || username === "emp") &&
-      password === "1234"
-    ) {
-      setUser(username);
-    } else {
-      alert("Incorrect username or password.");
-    }
+  const validUsers = ["hr", "manager", "intern", "engineer"];
+
+  if (validUsers.includes(username) && password === "1234") {
+    setUser(username);
+  } else {
+    alert("Incorrect username or password.");
   }
+}
 
   return (
     <div className="login-container">

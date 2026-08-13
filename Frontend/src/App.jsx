@@ -2,6 +2,7 @@ import { useState } from "react";
 import Login from "./pages/Login";
 import HRDashboard from "./pages/HRDashboard";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
+import ManagerDashboard from "./pages/ManagerDashboard";
 import "./App.css";
 
 function App() {
@@ -13,6 +14,8 @@ function App() {
         <Login setUser={setUser} />
       ) : user === "hr" ? (
         <HRDashboard user={user} />
+      ) : user === "manager" ? (
+        <ManagerDashboard user={user} />
       ) : (
         <EmployeeDashboard user={user} />
       )}

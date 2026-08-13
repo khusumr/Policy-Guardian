@@ -1,4 +1,4 @@
-import { getExpirationInfo } from "../data/store";
+import { getExpirationInfo } from "../Data/store";
 
 const STATUS_COLOR = {
   ok: "#16a34a",
