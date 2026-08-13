@@ -25,6 +25,10 @@ resource "azurerm_linux_web_app" "backend" {
     cors {
       allowed_origins = ["*"] # tighten to the real frontend URL once it exists
     }
+    # Without this, Azure just shows its default placeholder page even
+    # after a successful deploy — it needs to be told how to actually
+    # start the app.
+    app_command_line = "python -m uvicorn main:app --host 0.0.0.0 --port 8000"
   }
 
   app_settings = {
