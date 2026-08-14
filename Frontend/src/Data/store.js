@@ -40,6 +40,33 @@ export const BUILT_IN_ROLES = [
   { id: "hr", label: "HR" },
 ];
 
+export const MOCK_USERS = [
+  { id: "manager1", name: "Alice", role: "manager" },
+  { id: "manager2", name: "Bob", role: "manager" },
+
+  { id: "intern1", name: "Charlie", role: "intern", managerId: "manager1" },
+  { id: "intern2", name: "David", role: "intern", managerId: "manager1" },
+  { id: "engineer1", name: "Ethan", role: "engineer", managerId: "manager1" },
+
+  { id: "intern3", name: "Fiona", role: "intern", managerId: "manager2" },
+  { id: "engineer2", name: "George", role: "engineer", managerId: "manager2" },
+];
+
+export function getMockUsersByRole(role) {
+  return MOCK_USERS.filter((user) => user.role === role);
+}
+
+export function getMockTeam(managerId) {
+  return MOCK_USERS.filter(
+    (user) => user.managerId === managerId
+  );
+}
+
+export function getMockManager(managerId) {
+  return MOCK_USERS.find(
+    (user) => user.id === managerId
+  );
+}
 // Which real logins can receive a given role's policy. This demo only
 // has "hr" and "emp" logins (see Login.jsx), so only the "employee"
 // role has anyone to actually send to. Extend this once more logins

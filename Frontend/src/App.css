@@ -699,3 +699,11 @@ body {
   font-size: 13px;
   color: #9ca3af;
 }
+
+.team-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 20px;
+  padding: 12px 16px;
+  align-items: center;
+}

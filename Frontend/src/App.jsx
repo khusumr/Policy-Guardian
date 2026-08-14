@@ -14,7 +14,7 @@ function App() {
         <Login setUser={setUser} />
       ) : user === "hr" ? (
         <HRDashboard user={user} />
-      ) : user === "manager" ? (
+      ) : user === "manager1" || user === "manager2" ? (
         <ManagerDashboard user={user} />
       ) : (
         <EmployeeDashboard user={user} />

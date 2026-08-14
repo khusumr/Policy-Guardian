@@ -1,14 +1,27 @@
 import { useState } from "react";
 import EmployeeSidebar from "../components/employee/EmployeeSidebar";
 import PolicyViewer from "./PolicyViewer";
-import { getAssignmentsForEmployee } from "../data/store";
+import {
+  getAssignmentsForEmployee,
+  getMockTeam,
+  getMockManager,
+} from "../data/store";
 
 function ManagerDashboard({ user }) {
-  const [assignments, setAssignments] = useState(
-    getAssignmentsForEmployee(user)
-  );
+    const [assignments, setAssignments] = useState(
+        getAssignmentsForEmployee(user)
+    );
 
-  const [selectedAssignment, setSelectedAssignment] = useState(null);
+    const [selectedAssignment, setSelectedAssignment] = useState(null);
+    const manager = getMockManager(user);
+    const teamMembers = getMockTeam(user).map((member) => {
+        const memberAssignments = getAssignmentsForEmployee(member.id);
+
+        return {
+            ...member,
+            assignments: memberAssignments,
+        };
+   });
 
   function refresh() {
     setAssignments(getAssignmentsForEmployee(user));
@@ -50,49 +63,44 @@ function ManagerDashboard({ user }) {
         ) : (
           <>
             <h1>Manager Dashboard</h1>
-            <p>Welcome {user}</p>
+            <p>Welcome {manager?.name || user}</p>
 
             <section className="dashboard-section team-section">
-              <div className="section-header">
-                <h2>Team Members</h2>
-                <p>
-                  View the policy signing status of your team.
-                </p>
-              </div>
-
-              <div className="team-list">
-                <div className="team-row team-header">
-                  <span>Employee</span>
-                  <span>Policy</span>
-                  <span>Status</span>
+                <div className="section-header">
+                    <h2>Team Members</h2>
+                    <p>View the policy signing status of your team.</p>
                 </div>
 
-                {/* Temporary test data */}
-                <div className="team-row">
-                  <span>Alice</span>
-                  <span>Code of Conduct</span>
-                  <span className="status-signed">✓ Signed</span>
-                </div>
+                <div className="team-list">
+                    <div className="team-row team-header">
+                    <span>Employee</span>
+                    <span>Role</span>
+                    <span>Status</span>
+                    </div>
 
-                <div className="team-row">
-                  <span>Bob</span>
-                  <span>Code of Conduct</span>
-                  <span className="status-pending">Pending</span>
+                    {teamMembers.map((member) => (
+                    <div className="team-row" key={member.id}>
+                        <span>{member.name}</span>
+                        <span>{member.role}</span>
+                        <span
+                            className={
+                                member.assignments.some(
+                                (assignment) => assignment.status === "signed"
+                                )
+                                ? "status-signed"
+                                : "status-pending"
+                            }
+                            >
+                            {member.assignments.some(
+                                (assignment) => assignment.status === "signed"
+                            )
+                                ? "✓ Signed"
+                                : "Pending"}
+                        </span>
+                    </div>
+                    ))}
                 </div>
-
-                <div className="team-row">
-                  <span>Charlie</span>
-                  <span>Code of Conduct</span>
-                  <span className="status-signed">✓ Signed</span>
-                </div>
-
-                <div className="team-row">
-                  <span>David</span>
-                  <span>Code of Conduct</span>
-                  <span className="status-pending">Pending</span>
-                </div>
-              </div>
-            </section>
+                </section>
 
             <section className="dashboard-section incident-section">
               <h2>Incident Report</h2>

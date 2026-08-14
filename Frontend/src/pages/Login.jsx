@@ -7,10 +7,19 @@ function Login({ setUser }) {
   function login(e) {
   e.preventDefault();
 
-  const validUsers = ["hr", "manager", "intern", "engineer"];
+  const users = {
+    hr: "hr",
+    alice: "manager1",
+    bob: "manager2",
+    charlie: "intern1",
+    david: "intern2",
+    ethan: "engineer1",
+    fiona: "intern3",
+    george: "engineer2",
+  };
 
-  if (validUsers.includes(username) && password === "1234") {
-    setUser(username);
+  if (users[username] && password === "1234") {
+    setUser(users[username]);
   } else {
     alert("Incorrect username or password.");
   }
