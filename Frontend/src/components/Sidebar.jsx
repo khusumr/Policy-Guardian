@@ -15,6 +15,7 @@ function Sidebar({
   onSelectPending,
   onSelectOverall,
   onAddCustomSection,
+  onOpenIncidentReport,
 }) {
   const roles = getAllRoles();
   const [expanded, setExpanded] = useState(() => new Set(roles.map((r) => r.id)));
@@ -127,6 +128,15 @@ function Sidebar({
           </div>
         );
       })}
+
+      {/* Placeholder entry point — your teammate can move/restyle this
+          button wherever they like; the important part is just calling
+          onOpenIncidentReport(). */}
+      {onOpenIncidentReport && (
+        <button className="tab sidebar-incident-link" onClick={onOpenIncidentReport}>
+          🚨 Incident Report
+        </button>
+      )}
     </div>
   );
 }

@@ -4,11 +4,12 @@ import SectionEditor from "./SectionEditor";
 import PolicyOverall from "./PolicyOverall";
 import SectionGenerate from "./SectionGenerate";
 import CustomSectionForm from "./CustomSectionForm";
+import IncidentReport from "./IncidentReport";
 import { getSections } from "../data/store";
 
 function HRDashboard({ user }) {
   const [sections, setSections] = useState(getSections());
-  const [page, setPage] = useState("home"); // "home" | "editor" | "overall" | "generate" | "customQuestionnaire"
+  const [page, setPage] = useState("home"); // "home" | "editor" | "overall" | "generate" | "customQuestionnaire" | "incident"
   const [selectedSection, setSelectedSection] = useState(null);
   const [selectedRole, setSelectedRole] = useState(null);
   const [pending, setPending] = useState(null); // { role, sectionType }
@@ -67,6 +68,10 @@ function HRDashboard({ user }) {
         onSelectPending={handleSelectPending}
         onSelectOverall={handleSelectOverall}
         onAddCustomSection={handleAddCustomSection}
+        // Placeholder entry point for testing — your teammate's button just
+        // needs to call this same setPage("incident") (or render
+        // <IncidentReport /> directly) from wherever it lives in the UI.
+        onOpenIncidentReport={() => setPage("incident")}
       />
 
       <div className="content">
@@ -82,6 +87,8 @@ function HRDashboard({ user }) {
           />
         ) : page === "customQuestionnaire" && customSectionRole ? (
           <CustomSectionForm role={customSectionRole} onSectionCreated={handleSectionCreated} />
+        ) : page === "incident" ? (
+          <IncidentReport />
         ) : (
           <>
             <h1>Welcome {user}</h1>
