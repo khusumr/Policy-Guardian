@@ -1,6 +1,6 @@
 import { useState } from "react";
 import QuestionnaireForm from "../components/hr/QuestionnaireForm";
-import { SECTION_TEMPLATES } from "../data/policyTemplates";
+import { SECTION_TEMPLATES, applyTone } from "../data/policyTemplates";
 import { createSection, roleLabel } from "../data/store";
 
 // Shown the first time someone clicks a fixed-template tab (Work From
@@ -11,13 +11,14 @@ function SectionGenerate({ role, sectionType, onSectionCreated }) {
   const [showForm, setShowForm] = useState(false);
   const template = SECTION_TEMPLATES[sectionType];
 
-  function handleGenerate({ title, answers }) {
-    const content = template.generate(answers);
+  function handleGenerate({ title, tone, answers }) {
+    const content = applyTone(template.generate(answers), tone, template.label);
     const section = createSection({
       role,
       sectionType,
       title: title || template.label,
       content,
+      tone,
       answers,
     });
     onSectionCreated(section);

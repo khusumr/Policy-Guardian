@@ -9,11 +9,55 @@
 //
 // Placeholder "AI generation" — swap generate() out for a real API
 // call later, same idea as data/aiMock.js.
+//
+// Tone options match the backend's Tone enum (backend/main.py) so the
+// value picked here can go straight into a real /generate-policy call
+// later without a mapping step.
+
+export const TONE_OPTIONS = ["Professional", "Formal", "Friendly", "Simple"];
+
+const TONE_FRAMING = {
+  Professional: {
+    intro: (label) => `This section defines the ${label} policy and the expectations that apply.`,
+    closing: "Employees are expected to comply with the guidelines above.",
+  },
+  Formal: {
+    intro: (label) => `This document formally establishes the ${label} policy of the organization.`,
+    closing: "Non-compliance with the foregoing provisions may result in disciplinary action.",
+  },
+  Friendly: {
+    intro: (label) => `Here's what you need to know about our ${label} policy!`,
+    closing: "Thanks for reading — reach out to HR if anything's unclear.",
+  },
+  Simple: {
+    intro: (label) => `${label} policy, in plain terms:`,
+    closing: "That's it. Ask HR if you have questions.",
+  },
+};
+
+// Wraps a template's generated body with tone-appropriate framing.
+// Placeholder in the same sense as generate() above — once a real AI
+// call replaces generate(), tone would be passed into the prompt
+// directly instead of framing the text after the fact.
+export function applyTone(content, tone, label) {
+  const framing = TONE_FRAMING[tone] || TONE_FRAMING.Professional;
+  return `${framing.intro(label)}\n\n${content}\n\n${framing.closing}`;
+}
 
 export const SECTION_TEMPLATES = {
   work_from_home: {
     label: "Work From Home",
     description: "Remote work eligibility and expectations",
+    citations: [
+      {
+        law: "Fair Labor Standards Act (FLSA)",
+        note: "Governs overtime eligibility and hours-worked tracking for non-exempt employees, including remote workers.",
+      },
+      {
+        law: "State expense reimbursement laws (e.g. California Labor Code §2802)",
+        note: "Some states require employers to reimburse necessary home-office expenses incurred while working remotely.",
+      },
+    ],
     fields: [
       {
         key: "daysPerWeek",
@@ -81,6 +125,16 @@ export const SECTION_TEMPLATES = {
   pto: {
     label: "Paid Time Off",
     description: "Vacation, sick leave, and holiday policy",
+    citations: [
+      {
+        law: "Family and Medical Leave Act (FMLA)",
+        note: "Provides eligible employees unpaid, job-protected leave for specified family and medical reasons.",
+      },
+      {
+        law: "State and local paid sick leave laws",
+        note: "Many states and cities mandate a minimum paid sick leave accrual rate, separate from general PTO.",
+      },
+    ],
     fields: [
       {
         key: "daysPerYear",
@@ -143,6 +197,20 @@ export const SECTION_TEMPLATES = {
   code_of_conduct: {
     label: "Code of Conduct",
     description: "Expected behavior and reporting process",
+    citations: [
+      {
+        law: "Title VII of the Civil Rights Act of 1964",
+        note: "Prohibits workplace discrimination and harassment based on race, color, religion, sex, or national origin.",
+      },
+      {
+        law: "EEOC guidelines",
+        note: "Sets standards for harassment prevention, investigation, and complaint handling.",
+      },
+      {
+        law: "Whistleblower protection laws",
+        note: "Protect employees who report violations in good faith from retaliation.",
+      },
+    ],
     fields: [
       {
         key: "purpose",
@@ -202,6 +270,16 @@ export const SECTION_TEMPLATES = {
   expenses: {
     label: "Expense Reimbursement",
     description: "What can be expensed and how to submit it",
+    citations: [
+      {
+        law: "IRS Publication 463",
+        note: "Governs what counts as a deductible/reimbursable business expense (travel, meals, entertainment).",
+      },
+      {
+        law: "State expense reimbursement laws (e.g. California Labor Code §2802)",
+        note: "Some states legally require employers to reimburse necessary business expenses.",
+      },
+    ],
     fields: [
       {
         key: "eligibleExpenses",
@@ -244,6 +322,108 @@ export const SECTION_TEMPLATES = {
         `Pre-Approval\nExpenses over ${answers.approvalLimit || "—"} require pre-approval.\n\n` +
         `Submission Process\n${answers.submissionProcess || "—"}\n\n` +
         `Reimbursement Timeline\n${answers.timeline || "—"}`
+      );
+    },
+  },
+
+  security: {
+    label: "Security",
+    description: "Passwords, device use, and data handling expectations",
+    citations: [
+      {
+        law: "HIPAA (Health Insurance Portability and Accountability Act)",
+        note: "Requires administrative, physical, and technical safeguards for protected health information, if applicable.",
+      },
+      {
+        law: "NIST Cybersecurity Framework / NIST 800-53",
+        note: "Widely used federal standard for access control, authentication, and incident response practices.",
+      },
+      {
+        law: "General Data Protection Regulation (GDPR)",
+        note: "Sets data protection requirements when handling personal data of EU residents.",
+      },
+      {
+        law: "California Consumer Privacy Act (CCPA)",
+        note: "Sets data handling and breach notification obligations for California residents' personal data.",
+      },
+    ],
+    fields: [
+      {
+        key: "passwordRequirements",
+        label: "What are the password requirements?",
+        type: "select",
+        options: [
+          "Minimum 8 characters",
+          "Minimum 12 characters with complexity requirements",
+          "Minimum 16 characters (passphrase)",
+          "Managed by single sign-on / passwordless login",
+        ],
+      },
+      {
+        key: "mfa",
+        label: "Is multi-factor authentication (MFA) required?",
+        type: "select",
+        options: [
+          "Required for all employees",
+          "Required for access to sensitive systems only",
+          "Optional but encouraged",
+          "Not required",
+        ],
+      },
+      {
+        key: "deviceUse",
+        label: "What devices can employees use to access company systems?",
+        type: "select",
+        options: [
+          "Company-issued devices only",
+          "Personal devices allowed with MDM enrollment",
+          "Personal devices allowed with no restrictions",
+          "Case-by-case approval required",
+        ],
+      },
+      {
+        key: "dataHandling",
+        label: "How should sensitive company data be handled?",
+        type: "select",
+        options: [
+          "Stored only in approved company systems, never on local devices",
+          "Encrypted at rest and in transit at all times",
+          "Shared only with authorized personnel on a need-to-know basis",
+          "No specific restrictions beyond standard confidentiality",
+        ],
+      },
+      {
+        key: "accessControl",
+        label: "How is system access granted?",
+        type: "select",
+        options: [
+          "Role-based access following least privilege",
+          "Manager approval required per request",
+          "All employees have broad access by default",
+          "Access reviewed and re-certified quarterly",
+        ],
+      },
+      {
+        key: "incidentReporting",
+        label: "How should a suspected security incident be reported?",
+        type: "select",
+        options: [
+          "Report to IT/Security team immediately",
+          "Report through anonymous online reporting form",
+          "Report to direct manager, who escalates to IT",
+          "Report through a confidential security hotline",
+        ],
+      },
+    ],
+    generate(answers) {
+      return (
+        `Purpose\nThis section defines the security expectations that apply when accessing company systems and data.\n\n` +
+        `Password Requirements\n${answers.passwordRequirements || "—"}\n\n` +
+        `Multi-Factor Authentication\n${answers.mfa || "—"}\n\n` +
+        `Device Use\n${answers.deviceUse || "—"}\n\n` +
+        `Data Handling\n${answers.dataHandling || "—"}\n\n` +
+        `Access Control\n${answers.accessControl || "—"}\n\n` +
+        `Reporting a Security Incident\n${answers.incidentReporting || "—"}`
       );
     },
   },

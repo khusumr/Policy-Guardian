@@ -1,7 +1,11 @@
-// Placeholder AI logic so the UI is fully wired up and demoable.
-// Replace the body of each function with a real call to your backend
-// (which would call the Anthropic API) once one exists. Keep the
-// function signatures the same and nothing else needs to change.
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function trim(text, max = 120) {
+  if (text.length <= max) return text;
+  return text.slice(0, max) + "…";
+}
 
 export async function askAIAboutText(question, highlightedText) {
   await delay(600);
@@ -15,29 +19,39 @@ export async function askAIAboutText(question, highlightedText) {
 }
 
 export async function rewordText(instruction, highlightedText) {
-  await delay(600);
+  await delay(700);
 
   return (
-    `${trim(highlightedText)} (Rewritten per your instruction: "${instruction}". ` +
-    `Placeholder response — connect a real AI backend to replace this.)`
+    `Reworded version:\n\n` +
+    `${highlightedText}\n\n` +
+    `Instruction: ${instruction}\n\n` +
+    `(Placeholder response — connect a real AI backend to replace this.)`
   );
 }
 
+// Incident Report AI
+
 export async function replyToIncidentMessage(conversationSoFar) {
   await delay(500);
-  const turnCount = conversationSoFar.filter((m) => m.role === "user").length;
+
+  const turnCount = conversationSoFar.filter(
+    (m) => m.role === "user"
+  ).length;
 
   if (turnCount === 1) {
     return "Thanks for sharing that. Can you tell me when and where this happened?";
   }
+
   if (turnCount === 2) {
     return "Got it. Who else was involved or witnessed it, if anyone?";
   }
-  return "Understood — feel free to add anything else, or click \"Generate Summary Report\" when you're ready.";
+
+  return 'Understood — feel free to add anything else, or click "Generate Summary Report" when you\'re ready.';
 }
 
 export async function summarizeIncident(conversation) {
   await delay(900);
+
   const transcript = conversation
     .filter((m) => m.role === "user")
     .map((m) => m.text)
@@ -52,6 +66,7 @@ export async function summarizeIncident(conversation) {
 
 export async function suggestIncidentNextSteps() {
   await delay(700);
+
   return [
     "Write down the specifics while they're fresh — dates, times, names, and direct quotes if possible.",
     "Determine whether this needs to be escalated to HR, Legal, or Security based on severity.",
@@ -61,11 +76,16 @@ export async function suggestIncidentNextSteps() {
   ];
 }
 
-function trim(text, max = 120) {
-  if (text.length <= max) return text;
-  return text.slice(0, max) + "…";
-}
+// Lawyer Chat AI
 
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+export async function askLawyer(question) {
+  await delay(700);
+
+  return (
+    `Disclaimer: this is a placeholder legal assistant for prototyping only, not real legal advice.\n\n` +
+    `Regarding "${trim(question, 80)}" — you'd want a licensed employment attorney to confirm this for ` +
+    `your specific state and industry, but generally a clause like this should reference the applicable ` +
+    `state and federal requirements explicitly. (Placeholder response — connect a real legal AI backend ` +
+    `to replace this.)`
+  );
 }

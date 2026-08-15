@@ -5,15 +5,17 @@ import PolicyOverall from "./PolicyOverall";
 import SectionGenerate from "./SectionGenerate";
 import CustomSectionForm from "./CustomSectionForm";
 import IncidentReport from "./IncidentReport";
+import UploadPolicyForm from "./UploadPolicyForm";
 import { getSections } from "../data/store";
 
 function HRDashboard({ user }) {
   const [sections, setSections] = useState(getSections());
-  const [page, setPage] = useState("home"); // "home" | "editor" | "overall" | "generate" | "customQuestionnaire" | "incident"
+  const [page, setPage] = useState("home");
   const [selectedSection, setSelectedSection] = useState(null);
   const [selectedRole, setSelectedRole] = useState(null);
-  const [pending, setPending] = useState(null); // { role, sectionType }
+  const [pending, setPending] = useState(null);
   const [customSectionRole, setCustomSectionRole] = useState(null);
+  const [uploadRole, setUploadRole] = useState(null);
 
   function refreshSections() {
     setSections(getSections());
@@ -37,6 +39,11 @@ function HRDashboard({ user }) {
   function handleAddCustomSection(role) {
     setCustomSectionRole(role);
     setPage("customQuestionnaire");
+  }
+
+  function handleAddUpload(role) {
+    setUploadRole(role);
+    setPage("upload");
   }
 
   function handleSectionCreated(section) {
@@ -68,17 +75,21 @@ function HRDashboard({ user }) {
         onSelectPending={handleSelectPending}
         onSelectOverall={handleSelectOverall}
         onAddCustomSection={handleAddCustomSection}
-        // Placeholder entry point for testing — your teammate's button just
-        // needs to call this same setPage("incident") (or render
-        // <IncidentReport /> directly) from wherever it lives in the UI.
+        onAddUpload={handleAddUpload}
         onOpenIncidentReport={() => setPage("incident")}
       />
 
       <div className="content">
         {page === "editor" && selectedSection ? (
-          <SectionEditor section={selectedSection} onUpdated={handleSectionUpdated} />
+          <SectionEditor
+            section={selectedSection}
+            onUpdated={handleSectionUpdated}
+          />
         ) : page === "overall" && selectedRole ? (
-          <PolicyOverall role={selectedRole} sections={sections} />
+          <PolicyOverall
+            role={selectedRole}
+            sections={sections}
+          />
         ) : page === "generate" && pending ? (
           <SectionGenerate
             role={pending.role}
@@ -86,13 +97,24 @@ function HRDashboard({ user }) {
             onSectionCreated={handleSectionCreated}
           />
         ) : page === "customQuestionnaire" && customSectionRole ? (
-          <CustomSectionForm role={customSectionRole} onSectionCreated={handleSectionCreated} />
+          <CustomSectionForm
+            role={customSectionRole}
+            onSectionCreated={handleSectionCreated}
+          />
+        ) : page === "upload" && uploadRole ? (
+          <UploadPolicyForm
+            role={uploadRole}
+            onSectionCreated={handleSectionCreated}
+          />
         ) : page === "incident" ? (
           <IncidentReport />
         ) : (
           <>
             <h1>Welcome {user}</h1>
-            <p>Pick a role in the sidebar, then a section within it, to get started.</p>
+            <p>
+              Pick a role in the sidebar, then a section within it,
+              to get started.
+            </p>
           </>
         )}
       </div>

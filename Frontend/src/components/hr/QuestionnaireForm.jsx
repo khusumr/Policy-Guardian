@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TONE_OPTIONS } from "../../data/policyTemplates";
 
 // Renders whatever fields a section template defines. `type: "select"`
 // renders a dropdown (e.g. "how many days" as 1-7); anything else
@@ -6,6 +7,7 @@ import { useState } from "react";
 
 function QuestionnaireForm({ fields, initialTitle, onGenerate, submitLabel = "Generate Section" }) {
   const [title, setTitle] = useState(initialTitle || "");
+  const [tone, setTone] = useState(TONE_OPTIONS[0]);
   const [answers, setAnswers] = useState({});
 
   function updateField(key, value) {
@@ -14,7 +16,7 @@ function QuestionnaireForm({ fields, initialTitle, onGenerate, submitLabel = "Ge
 
   function handleSubmit(e) {
     e.preventDefault();
-    onGenerate({ title, answers });
+    onGenerate({ title, tone, answers });
   }
 
   return (
@@ -26,6 +28,17 @@ function QuestionnaireForm({ fields, initialTitle, onGenerate, submitLabel = "Ge
           onChange={(e) => setTitle(e.target.value)}
           placeholder="e.g. Work From Home"
         />
+      </div>
+
+      <div className="questionnaire-field">
+        <label>Tone</label>
+        <select value={tone} onChange={(e) => setTone(e.target.value)}>
+          {TONE_OPTIONS.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
       </div>
 
       {fields.map((field) => (

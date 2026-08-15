@@ -27,7 +27,7 @@
   --color-sidebar-text-muted: #b6a6dd;
   --color-sidebar-border: #3b2170;
 
-  /* Semantic (kept distinct from the theme so status stays legible) */
+  /* Semantic */
   --color-success: #16a34a;
   --color-success-hover: #15803d;
   --color-warning: #d97706;
@@ -42,21 +42,31 @@
 }
 
 
-/* General */
+/* ============================================================
+   GENERAL
+   ============================================================ */
 
 * {
   box-sizing: border-box;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, Helvetica, sans-serif;
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Arial,
+    Helvetica,
+    sans-serif;
   background: var(--color-surface);
   color: var(--color-text);
   margin: 0;
 }
 
 
-/* LOGIN */
+/* ============================================================
+   LOGIN
+   ============================================================ */
 
 .login-container {
   height: 100vh;
@@ -66,7 +76,11 @@ body {
   justify-content: center;
   align-items: center;
 
-  background: linear-gradient(160deg, var(--color-sidebar-bg) 0%, var(--color-primary-hover) 100%);
+  background: linear-gradient(
+    160deg,
+    var(--color-sidebar-bg) 0%,
+    var(--color-primary-hover) 100%
+  );
 }
 
 .login-card {
@@ -122,7 +136,9 @@ body {
 }
 
 
-/* DASHBOARD */
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
 
 .dashboard {
   display: flex;
@@ -207,6 +223,11 @@ body {
   position: relative;
 }
 
+.content h1 {
+  color: var(--color-text);
+  margin-bottom: 6px;
+}
+
 .questionnaire-button {
   padding: 12px 20px;
 
@@ -232,7 +253,13 @@ body {
 }
 
 
-/* QUESTIONNAIRE */
+/* ============================================================
+   QUESTIONNAIRE
+   ============================================================ */
+
+.questionnaire-page {
+  max-width: 800px;
+}
 
 .questionnaire-page h1 {
   color: var(--color-text);
@@ -289,18 +316,15 @@ body {
 }
 
 
-/* SHARED PAGE / PANEL STYLING */
+/* ============================================================
+   SHARED PAGE / PANEL STYLING
+   ============================================================ */
 
 .policy-editor,
 .policy-viewer,
 .questionnaire-page,
 .incident-page {
   max-width: 800px;
-}
-
-.content h1 {
-  color: var(--color-text);
-  margin-bottom: 6px;
 }
 
 .editor-hint {
@@ -317,7 +341,9 @@ body {
 }
 
 
-/* POLICY EDITOR (HR) */
+/* ============================================================
+   POLICY EDITOR (HR)
+   ============================================================ */
 
 .policy-editor-textarea {
   width: 100%;
@@ -416,8 +442,109 @@ body {
   font-weight: bold;
 }
 
+.history-button {
+  padding: 12px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 16px;
+}
 
-/* POLICY VIEWER (Employee) — improved reading experience */
+.history-button:hover {
+  background: var(--color-surface);
+}
+
+
+/* ============================================================
+   POLICY HISTORY PANEL
+   ============================================================ */
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.history-entry {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+
+.history-entry-current {
+  background: var(--color-surface);
+}
+
+.history-entry-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.history-entry-toggle {
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.history-entry-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.history-entry-date {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.history-entry-tone {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.history-entry-preview {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text);
+  white-space: pre-wrap;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+
+/* ============================================================
+   UPLOAD POLICY FORM
+   ============================================================ */
+
+.upload-preview {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text);
+  white-space: pre-wrap;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--color-surface);
+}
+
+
+/* ============================================================
+   POLICY VIEWER (Employee)
+   ============================================================ */
 
 .policy-viewer-header {
   position: sticky;
@@ -511,7 +638,9 @@ body {
 }
 
 
-/* AI HIGHLIGHTING */
+/* ============================================================
+   AI HIGHLIGHTING
+   ============================================================ */
 
 .highlighter {
   position: relative;
@@ -556,7 +685,9 @@ body {
 }
 
 
-/* AI RESPONSE PANEL */
+/* ============================================================
+   AI RESPONSE PANEL
+   ============================================================ */
 
 .ai-panel {
   position: fixed;
@@ -666,7 +797,9 @@ body {
 }
 
 
-/* ROLE FOLDERS (HR sidebar) */
+/* ============================================================
+   ROLE FOLDERS (HR SIDEBAR)
+   ============================================================ */
 
 .role-folder {
   margin-bottom: 6px;
@@ -777,7 +910,9 @@ body {
 }
 
 
-/* TEMPLATE / ROLE PICKER (Questionnaire steps) */
+/* ============================================================
+   TEMPLATE / ROLE PICKER
+   ============================================================ */
 
 .template-grid {
   display: grid;
@@ -795,7 +930,9 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .template-card:hover {
@@ -863,7 +1000,9 @@ body {
 }
 
 
-/* OVERALL POLICY VIEW (HR) */
+/* ============================================================
+   OVERALL POLICY VIEW
+   ============================================================ */
 
 .overall-sections {
   max-width: 800px;
@@ -894,7 +1033,9 @@ body {
 }
 
 
-/* EXPIRATION TIMELINE */
+/* ============================================================
+   EXPIRATION TIMELINE
+   ============================================================ */
 
 .expiration-panel {
   display: flex;
@@ -943,7 +1084,9 @@ body {
 }
 
 
-/* SIGNATURES PIE CHART + OVERALL STATS ROW */
+/* ============================================================
+   SIGNATURES PIE CHART + OVERALL STATS ROW
+   ============================================================ */
 
 .overall-stats-row {
   display: grid;
@@ -973,7 +1116,9 @@ body {
 }
 
 
-/* CHAT MESSAGE BUBBLES (reused by Incident Report chat) */
+/* ============================================================
+   CHAT MESSAGE BUBBLES
+   ============================================================ */
 
 .lawyer-empty {
   font-size: 13px;
@@ -1006,7 +1151,9 @@ body {
 }
 
 
-/* INCIDENT REPORT */
+/* ============================================================
+   INCIDENT REPORT
+   ============================================================ */
 
 .incident-layout {
   display: grid;
@@ -1141,6 +1288,11 @@ body {
     font-size: 14px;
   }
 }
+
+
+/* ============================================================
+   TEAM
+   ============================================================ */
 
 .team-row {
   display: grid;

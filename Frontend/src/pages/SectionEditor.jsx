@@ -1,6 +1,9 @@
 import { useRef, useState } from "react";
 import AIResponsePanel from "../components/ai/AIResponsePanel";
-import { saveSection } from "../data/store";
+import PolicyHistoryPanel from "../components/PolicyHistoryPanel";
+import CitationsPanel from "../components/CitationsPanel";
+import { saveSection, restoreSectionVersion } from "../data/store";
+import { SECTION_TEMPLATES } from "../data/policyTemplates";
 
 // Edits one section of one role's policy. Uses a <textarea>, not
 // rendered text, so it can't use the Highlighter component
@@ -10,9 +13,13 @@ import { saveSection } from "../data/store";
 function SectionEditor({ section, onUpdated }) {
   const [content, setContent] = useState(section.content);
   const [selection, setSelection] = useState({ text: "", start: 0, end: 0 });
-  const [aiMode, setAiMode] = useState(null); // null | "ask" | "reword"
+  // Only one side panel can be open at a time — opening one closes any other.
+  const [activePanel, setActivePanel] = useState(null); // null | "ask" | "reword" | "history" | "citations"
   const [savedNote, setSavedNote] = useState(false);
+  const [currentSection, setCurrentSection] = useState(section);
   const textareaRef = useRef(null);
+  const template = SECTION_TEMPLATES[section.sectionType];
+  const citations = template?.citations || [];
 
   function handleSelect() {
     const el = textareaRef.current;
@@ -26,9 +33,10 @@ function SectionEditor({ section, onUpdated }) {
   }
 
   function handleSave() {
-    const updated = { ...section, content, updatedAt: new Date().toISOString() };
-    saveSection(updated);
-    onUpdated(updated);
+    const updated = { ...currentSection, content, updatedAt: new Date().toISOString() };
+    const saved = saveSection(updated);
+    setCurrentSection(saved);
+    onUpdated(saved);
     setSavedNote(true);
     setTimeout(() => setSavedNote(false), 2000);
   }
@@ -37,14 +45,24 @@ function SectionEditor({ section, onUpdated }) {
     setContent(
       (prev) => prev.slice(0, selection.start) + newText + prev.slice(selection.end)
     );
-    setAiMode(null);
+    setActivePanel(null);
+  }
+
+  function handleRestore(historyIndex) {
+    const restored = restoreSectionVersion(currentSection.id, historyIndex);
+    if (!restored) return;
+    setCurrentSection(restored);
+    setContent(restored.content);
+    onUpdated(restored);
+    setActivePanel(null);
   }
 
   return (
     <div className="policy-editor">
       <h1>{section.title}</h1>
       <p className="editor-hint">
-        {section.role} section · Highlight text below, then ask AI about it or have AI reword it.
+        {section.role} section · {currentSection.tone || "Professional"} tone · Highlight text
+        below, then ask AI about it or have AI reword it.
       </p>
 
       <textarea
@@ -56,10 +74,10 @@ function SectionEditor({ section, onUpdated }) {
       />
 
       <div className="ai-selection-actions">
-        <button disabled={!selection.text} onClick={() => setAiMode("ask")}>
+        <button disabled={!selection.text} onClick={() => setActivePanel("ask")}>
           Ask AI about selection
         </button>
-        <button disabled={!selection.text} onClick={() => setAiMode("reword")}>
+        <button disabled={!selection.text} onClick={() => setActivePanel("reword")}>
           Reword selection
         </button>
       </div>
@@ -68,6 +86,14 @@ function SectionEditor({ section, onUpdated }) {
         <button className="save-button" onClick={handleSave}>
           Save
         </button>
+        <button className="history-button" onClick={() => setActivePanel("history")}>
+          History{(currentSection.history || []).length > 0 && ` (${currentSection.history.length})`}
+        </button>
+        {citations.length > 0 && (
+          <button className="history-button" onClick={() => setActivePanel("citations")}>
+            Citations ({citations.length})
+          </button>
+        )}
       </div>
 
       {savedNote && <p className="sent-confirmation">Saved.</p>}
@@ -77,13 +103,29 @@ function SectionEditor({ section, onUpdated }) {
         review the full combined policy and send it to employees.
       </p>
 
-      {aiMode && (
+      {(activePanel === "ask" || activePanel === "reword") && (
         <AIResponsePanel
-          mode={aiMode}
+          mode={activePanel}
           highlightedText={selection.text}
           allowApply
-          onClose={() => setAiMode(null)}
+          onClose={() => setActivePanel(null)}
           onApplyReword={handleApplyReword}
+        />
+      )}
+
+      {activePanel === "history" && (
+        <PolicyHistoryPanel
+          section={currentSection}
+          onClose={() => setActivePanel(null)}
+          onRestore={handleRestore}
+        />
+      )}
+
+      {activePanel === "citations" && (
+        <CitationsPanel
+          label={template?.label || section.title}
+          citations={citations}
+          onClose={() => setActivePanel(null)}
         />
       )}
     </div>

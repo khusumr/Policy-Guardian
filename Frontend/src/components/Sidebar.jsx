@@ -2,11 +2,9 @@ import { useState } from "react";
 import { getAllRoles, addRole } from "../data/store";
 import { SECTION_TEMPLATES } from "../data/policyTemplates";
 
-// The 4 built-in templates always show up as tabs under every role,
-// whether or not that section has been generated yet. "Custom" isn't
-// fixed-slot — a role can have any number of custom sections, added
-// individually — so it's listed separately.
-const FIXED_SECTION_TYPES = Object.keys(SECTION_TEMPLATES).filter((k) => k !== "custom");
+const FIXED_SECTION_TYPES = Object.keys(SECTION_TEMPLATES).filter(
+  (k) => k !== "custom"
+);
 
 function Sidebar({
   sections,
@@ -15,29 +13,36 @@ function Sidebar({
   onSelectPending,
   onSelectOverall,
   onAddCustomSection,
+  onAddUpload,
   onOpenIncidentReport,
 }) {
   const roles = getAllRoles();
-  const [expanded, setExpanded] = useState(() => new Set(roles.map((r) => r.id)));
+  const [expanded, setExpanded] = useState(
+    () => new Set(roles.map((r) => r.id))
+  );
   const [newRoleInput, setNewRoleInput] = useState("");
   const [, forceUpdate] = useState(0);
 
   function toggle(roleId) {
     setExpanded((prev) => {
       const next = new Set(prev);
+
       if (next.has(roleId)) next.delete(roleId);
       else next.add(roleId);
+
       return next;
     });
   }
 
   function handleAddRole(e) {
     e.preventDefault();
+
     const id = addRole(newRoleInput);
+
     if (id) {
       setNewRoleInput("");
       setExpanded((prev) => new Set(prev).add(id));
-      forceUpdate((n) => n + 1); // re-render so getAllRoles() picks up the new role
+      forceUpdate((n) => n + 1);
     }
   }
 
@@ -45,12 +50,16 @@ function Sidebar({
     <div className="sidebar">
       <h2>Policies</h2>
 
-      <form className="custom-role-form sidebar-new-role-form" onSubmit={handleAddRole}>
+      <form
+        className="custom-role-form sidebar-new-role-form"
+        onSubmit={handleAddRole}
+      >
         <input
           placeholder="+ New role (e.g. Contractor)"
           value={newRoleInput}
           onChange={(e) => setNewRoleInput(e.target.value)}
         />
+
         <button type="submit" disabled={!newRoleInput.trim()}>
           Add
         </button>
@@ -58,22 +67,46 @@ function Sidebar({
 
       {roles.map((role) => {
         const isOpen = expanded.has(role.id);
-        const roleSections = sections.filter((s) => s.role === role.id);
-        const customSections = roleSections.filter((s) => s.sectionType === "custom");
+
+        const roleSections = sections.filter(
+          (s) => s.role === role.id
+        );
+
+        const customSections = roleSections.filter(
+          (s) => s.sectionType === "custom"
+        );
+
+        const uploadedSections = roleSections.filter(
+          (s) => s.sectionType === "uploaded"
+        );
 
         return (
           <div className="role-folder" key={role.id}>
-            <button className="role-folder-header" onClick={() => toggle(role.id)}>
-              <span className="role-folder-chevron">{isOpen ? "▾" : "▸"}</span>
-              <span className="role-folder-label">{role.label}</span>
-              <span className="role-folder-count">{roleSections.length}</span>
+            <button
+              className="role-folder-header"
+              onClick={() => toggle(role.id)}
+            >
+              <span className="role-folder-chevron">
+                {isOpen ? "▾" : "▸"}
+              </span>
+
+              <span className="role-folder-label">
+                {role.label}
+              </span>
+
+              <span className="role-folder-count">
+                {roleSections.length}
+              </span>
             </button>
 
             {isOpen && (
               <div className="role-folder-body">
                 <button
                   className={
-                    "tab tab-nested" + (selectedKey === `overall:${role.id}` ? " tab-active" : "")
+                    "tab tab-nested" +
+                    (selectedKey === `overall:${role.id}`
+                      ? " tab-active"
+                      : "")
                   }
                   onClick={() => onSelectOverall(role.id)}
                 >
@@ -82,10 +115,15 @@ function Sidebar({
 
                 {FIXED_SECTION_TYPES.map((type) => {
                   const template = SECTION_TEMPLATES[type];
-                  const section = roleSections.find((s) => s.sectionType === type);
+
+                  const section = roleSections.find(
+                    (s) => s.sectionType === type
+                  );
+
                   const isSelected = section
                     ? selectedKey === section.id
-                    : selectedKey === `pending:${role.id}:${type}`;
+                    : selectedKey ===
+                      `pending:${role.id}:${type}`;
 
                   return (
                     <button
@@ -96,11 +134,18 @@ function Sidebar({
                         (!section ? " tab-pending" : "")
                       }
                       onClick={() =>
-                        section ? onSelectSection(section) : onSelectPending(role.id, type)
+                        section
+                          ? onSelectSection(section)
+                          : onSelectPending(role.id, type)
                       }
                     >
                       {template.label}
-                      {!section && <span className="tab-status">Not started</span>}
+
+                      {!section && (
+                        <span className="tab-status">
+                          Not started
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -109,7 +154,25 @@ function Sidebar({
                   <button
                     key={section.id}
                     className={
-                      "tab tab-nested" + (selectedKey === section.id ? " tab-active" : "")
+                      "tab tab-nested" +
+                      (selectedKey === section.id
+                        ? " tab-active"
+                        : "")
+                    }
+                    onClick={() => onSelectSection(section)}
+                  >
+                    {section.title}
+                  </button>
+                ))}
+
+                {uploadedSections.map((section) => (
+                  <button
+                    key={section.id}
+                    className={
+                      "tab tab-nested" +
+                      (selectedKey === section.id
+                        ? " tab-active"
+                        : "")
                     }
                     onClick={() => onSelectSection(section)}
                   >
@@ -123,17 +186,24 @@ function Sidebar({
                 >
                   + Add custom section
                 </button>
+
+                <button
+                  className="tab tab-nested tab-add"
+                  onClick={() => onAddUpload(role.id)}
+                >
+                  + Upload existing policy
+                </button>
               </div>
             )}
           </div>
         );
       })}
 
-      {/* Placeholder entry point — your teammate can move/restyle this
-          button wherever they like; the important part is just calling
-          onOpenIncidentReport(). */}
       {onOpenIncidentReport && (
-        <button className="tab sidebar-incident-link" onClick={onOpenIncidentReport}>
+        <button
+          className="tab sidebar-incident-link"
+          onClick={onOpenIncidentReport}
+        >
           🚨 Incident Report
         </button>
       )}
