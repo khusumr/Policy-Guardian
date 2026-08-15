@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Highlighter from "../components/ai/Highlighter";
 import AIResponsePanel from "../components/ai/AIResponsePanel";
+import SealBadge from "../components/SealBadge";
 import { signAssignment, roleLabel } from "../data/store";
 
 // Jump-to-section anchors so a multi-part policy (WFH + PTO + Code of
@@ -33,9 +34,10 @@ function PolicyViewer({ assignment, onSigned }) {
         <h1>{roleLabel(assignment.role)} Policy</h1>
 
         {assignment.status === "signed" ? (
-          <p className="signed-note">
+          <div className="signed-banner">
+            <SealBadge />
             Signed on {new Date(assignment.signedAt).toLocaleDateString()}
-          </p>
+          </div>
         ) : (
           <p className="pending-note">Highlight any text to ask AI about it.</p>
         )}
