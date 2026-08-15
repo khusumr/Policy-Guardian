@@ -6,7 +6,13 @@ import SectionGenerate from "./SectionGenerate";
 import CustomSectionForm from "./CustomSectionForm";
 import IncidentReport from "./IncidentReport";
 import UploadPolicyForm from "./UploadPolicyForm";
-import { getSections } from "../data/store";
+
+import {
+  getSections,
+  getAssignmentsForEmployee,
+  getMockUsersByRole,
+  getMockManager,
+} from "../data/store";
 
 function HRDashboard({ user }) {
   const [sections, setSections] = useState(getSections());
@@ -57,6 +63,38 @@ function HRDashboard({ user }) {
     setSelectedSection(section);
   }
 
+  function getEmployeeStatus(employeeId) {
+    const assignments = getAssignmentsForEmployee(employeeId);
+
+    if (assignments.length === 0) {
+      return {
+        text: "No Policy",
+        className: "status-none",
+      };
+    }
+
+    const signed = assignments.some(
+      (assignment) => assignment.status === "signed"
+    );
+
+    return signed
+      ? {
+          text: "✓ Signed",
+          className: "status-signed",
+        }
+      : {
+          text: "Pending",
+          className: "status-pending",
+        };
+  }
+
+  // Employees who belong to a manager's team.
+  // Managers themselves are not included in this table.
+  const teamMembers = [
+    ...getMockUsersByRole("intern"),
+    ...getMockUsersByRole("engineer"),
+  ];
+
   const selectedKey =
     page === "overall" && selectedRole
       ? `overall:${selectedRole}`
@@ -76,7 +114,7 @@ function HRDashboard({ user }) {
         onSelectOverall={handleSelectOverall}
         onAddCustomSection={handleAddCustomSection}
         onAddUpload={handleAddUpload}
-        onOpenIncidentReport={() => setPage("incident")}
+        onHome={() => setPage("home")}
       />
 
       <div className="content">
@@ -110,11 +148,72 @@ function HRDashboard({ user }) {
           <IncidentReport />
         ) : (
           <>
-            <h1>Welcome {user}</h1>
-            <p>
-              Pick a role in the sidebar, then a section within it,
-              to get started.
-            </p>
+            <h1>HR Dashboard</h1>
+            <p>Welcome {user}</p>
+
+            <section className="dashboard-section team-section">
+              <div className="section-header">
+                <h2>Policy Signing Status</h2>
+
+                <p>
+                  View who has signed their assigned policies
+                  and which team they belong to.
+                </p>
+              </div>
+
+              <div className="team-list">
+                <div className="team-row team-header">
+                  <span>Employee</span>
+                  <span>Team</span>
+                  <span>Role</span>
+                  <span>Status</span>
+                </div>
+
+                {teamMembers.map((member) => {
+                  const manager = member.managerId
+                    ? getMockManager(member.managerId)
+                    : null;
+
+                  const status = getEmployeeStatus(member.id);
+
+                  return (
+                    <div
+                      className="team-row"
+                      key={member.id}
+                    >
+                      <span>{member.name}</span>
+
+                      <span>
+                        {manager
+                          ? `${manager.name}'s Team`
+                          : "No Team"}
+                      </span>
+
+                      <span>{member.role}</span>
+
+                      <span className={status.className}>
+                        {status.text}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+            <section className="dashboard-section incident-section">
+              <h2>Incident Report</h2>
+
+              <p>
+                Create a report about an incident and get suggested
+                next steps.
+              </p>
+
+              <button
+                className="incident-report-button"
+                onClick={() => setPage("incident")}
+              >
+                🚨 Incident Report
+              </button>
+            </section>
           </>
         )}
       </div>

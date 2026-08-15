@@ -14,7 +14,7 @@ function Sidebar({
   onSelectOverall,
   onAddCustomSection,
   onAddUpload,
-  onOpenIncidentReport,
+  onHome,
 }) {
   const roles = getAllRoles();
   const [expanded, setExpanded] = useState(
@@ -49,6 +49,13 @@ function Sidebar({
   return (
     <div className="sidebar">
       <h2>Policies</h2>
+
+      <button
+        className={"tab" + (selectedKey === null ? " tab-active" : "")}
+        onClick={onHome}
+      >
+        🏠 Home
+      </button>
 
       <form
         className="custom-role-form sidebar-new-role-form"
@@ -122,8 +129,7 @@ function Sidebar({
 
                   const isSelected = section
                     ? selectedKey === section.id
-                    : selectedKey ===
-                      `pending:${role.id}:${type}`;
+                    : selectedKey === `pending:${role.id}:${type}`;
 
                   return (
                     <button
@@ -198,15 +204,6 @@ function Sidebar({
           </div>
         );
       })}
-
-      {onOpenIncidentReport && (
-        <button
-          className="tab sidebar-incident-link"
-          onClick={onOpenIncidentReport}
-        >
-          🚨 Incident Report
-        </button>
-      )}
     </div>
   );
 }
