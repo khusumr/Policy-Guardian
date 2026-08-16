@@ -28,7 +28,7 @@ def update_policy(org_id: str, policy_id: str, updates: dict) -> StoredPolicy | 
         return None
     updated_data = existing.model_dump()
     updated_data.update(updates)
-    updated_data["updated_at"] = datetime.utcnow()
+    updated_data["updated_at"] = datetime.now(UTC)
     updated_data["version"] = existing.version + 1
     updated_policy = StoredPolicy(**updated_data)
     storage.save_json(_blob_path(org_id, policy_id), updated_policy.model_dump())
