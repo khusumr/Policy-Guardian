@@ -1,3 +1,5 @@
+from openai import OpenAI
+
 from settings import (
     AZURE_OPENAI_ENDPOINT,
     AZURE_OPENAI_API_KEY,
@@ -7,22 +9,18 @@ from settings import (
 
 class OpenAIService:
     def __init__(self):
-        self.endpoint = AZURE_OPENAI_ENDPOINT
-        self.api_key = AZURE_OPENAI_API_KEY
+        self.client = OpenAI(
+            api_key=AZURE_OPENAI_API_KEY,
+            base_url=AZURE_OPENAI_ENDPOINT.rstrip("/") + "/openai/v1/",
+        )
+
         self.deployment = AZURE_OPENAI_DEPLOYMENT
 
     def generate_policy(self, prompt: str) -> str:
-        """
-        Placeholder until Azure OpenAI credentials are provided.
-        """
+        response = self.client.responses.create(
+            model=self.deployment,
+            input=prompt,
+        )
 
-        return f"""
-Azure OpenAI Placeholder
-
-Endpoint: {self.endpoint}
-Deployment: {self.deployment}
-
-Prompt Received:
-
-{prompt}
-"""
+        return response.output_text
+        
