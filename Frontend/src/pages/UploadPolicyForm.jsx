@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createSection, roleLabel } from "../data/store";
+import { createSection, roleLabel } from "../Data/store";
 
 // Lets HR bring an existing policy document into the app as a normal
 // section, so it gets the same editor, AI features (ask/reword), and

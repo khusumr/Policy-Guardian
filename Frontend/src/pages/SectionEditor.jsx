@@ -2,8 +2,8 @@ import { useRef, useState } from "react";
 import AIResponsePanel from "../components/ai/AIResponsePanel";
 import PolicyHistoryPanel from "../components/PolicyHistoryPanel";
 import CitationsPanel from "../components/CitationsPanel";
-import { saveSection, restoreSectionVersion } from "../data/store";
-import { SECTION_TEMPLATES } from "../data/policyTemplates";
+import { saveSection, restoreSectionVersion } from "../Data/store";
+import { SECTION_TEMPLATES } from "../Data/policyTemplates";
 
 // Edits one section of one role's policy. Uses a <textarea>, not
 // rendered text, so it can't use the Highlighter component

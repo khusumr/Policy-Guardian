@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { askAIAboutText, rewordText } from "../../data/aiMock";
+import { askAIAboutText, rewordText } from "../../Data/aiMock";
 
 // allowApply controls whether a "reword" response can be applied back
 // into the source document. HR's editor passes allowApply — employees

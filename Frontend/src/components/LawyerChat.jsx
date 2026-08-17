@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { askLawyer } from "../data/aiMock";
+import { askLawyer } from "../Data/aiMock";
 
 // A floating button, available across the HR dashboard, that opens a
 // slide-over chat for legal questions about policy language.

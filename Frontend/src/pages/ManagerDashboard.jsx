@@ -5,7 +5,7 @@ import {
   getAssignmentsForEmployee,
   getMockTeam,
   getMockManager,
-} from "../data/store";
+} from "../Data/store";
 
 function ManagerDashboard({ user }) {
     const [assignments, setAssignments] = useState(

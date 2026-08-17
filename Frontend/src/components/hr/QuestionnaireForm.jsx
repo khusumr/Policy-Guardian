@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { TONE_OPTIONS } from "../../data/policyTemplates";
+import { TONE_OPTIONS } from "../../Data/policyTemplates";
 
 // Renders whatever fields a section template defines. `type: "select"`
 // renders a dropdown (e.g. "how many days" as 1-7); anything else

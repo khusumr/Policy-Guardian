@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { getAllRoles, addRole } from "../data/store";
-import { SECTION_TEMPLATES } from "../data/policyTemplates";
+import { getAllRoles, addRole } from "../Data/store";
+import { SECTION_TEMPLATES } from "../Data/policyTemplates";
 
 const FIXED_SECTION_TYPES = Object.keys(SECTION_TEMPLATES).filter(
   (k) => k !== "custom"

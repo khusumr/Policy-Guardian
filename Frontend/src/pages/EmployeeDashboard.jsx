@@ -1,7 +1,7 @@
 import { useState } from "react";
 import EmployeeSidebar from "../components/employee/EmployeeSidebar";
 import PolicyViewer from "./PolicyViewer";
-import { getAssignmentsForEmployee } from "../data/store";
+import { getAssignmentsForEmployee } from "../Data/store";
 
 function EmployeeDashboard({ user }) {
   const [assignments, setAssignments] = useState(getAssignmentsForEmployee(user));
