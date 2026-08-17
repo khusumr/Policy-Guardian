@@ -34,3 +34,16 @@ resource "azurerm_storage_container" "generated_policies" {
   storage_account_id    = azurerm_storage_account.main.id
   container_access_type = "private"
 }
+
+# --------------------------------------------------
+# Frontend - Azure Static Web App
+# --------------------------------------------------
+
+resource "azurerm_static_web_app" "frontend" {
+  name                = "app-ai-policy-frontend"
+  resource_group_name = data.azurerm_resource_group.main.name
+  location            = data.azurerm_resource_group.main.location
+
+  sku_tier = "Free"
+  sku_size = "Free"
+}
