@@ -19,14 +19,26 @@ export async function askAIAboutText(question, highlightedText) {
 }
 
 export async function rewordText(instruction, highlightedText) {
-  await delay(700);
-
-  return (
-    `Reworded version:\n\n` +
-    `${highlightedText}\n\n` +
-    `Instruction: ${instruction}\n\n` +
-    `(Placeholder response — connect a real AI backend to replace this.)`
+  const response = await fetch(
+    "https://app-ai-policy-backend.azurewebsites.net/refine-policy",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        current_policy: highlightedText,
+        instruction,
+      }),
+    }
   );
+
+  if (!response.ok) {
+    throw new Error(`Backend returned ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.policy;
 }
 
 // Incident Report AI
