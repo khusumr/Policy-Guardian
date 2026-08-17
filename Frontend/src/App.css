@@ -1,72 +1,76 @@
 /* ============================================================
-   THEME — dark purple & white
-   All colors flow from these variables. Change a value here and
-   it updates everywhere it's used.
+   THEME — "Compliance Ledger": a deep byzantium purple and warm
+   paper white, built around the idea of a well-run policy binder —
+   folders, ledger rules, and an official sign-off seal for signed
+   documents. All colors/type flow from these variables.
    ============================================================ */
 
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
 :root {
-  /* Light surfaces (main content area, cards, forms) */
-  --color-bg: #ffffff;
-  --color-surface: #faf8ff;
-  --color-border: #e4defa;
-  --color-text: #211235;
-  --color-text-muted: #6b6280;
+  /* Paper surfaces (main content area, cards, forms) */
+  --color-bg: #fdfbfa;
+  --color-surface: #f6f1fb;
+  --color-border: #e3d7f2;
+  --color-text: #221130;
+  --color-text-muted: #6d5f82;
 
-  /* Purple brand / accent */
-  --color-primary: #7c3aed;
-  --color-primary-hover: #6d28d9;
-  --color-primary-light: #f3e8ff;
-  --color-primary-soft: #ede9fe;
+  /* Byzantium purple brand / accent */
+  --color-primary: #7a2e9e;
+  --color-primary-hover: #611f81;
+  --color-primary-light: #f1e2fa;
+  --color-primary-soft: #e9d6f7;
 
-  /* Dark purple sidebar / nav surfaces */
-  --color-sidebar-bg: #1e1033;
-  --color-sidebar-surface: #2c1a54;
-  --color-sidebar-hover: #3b2170;
-  --color-sidebar-active: #7c3aed;
+  /* Deep near-black purple sidebar / nav surfaces */
+  --color-sidebar-bg: #170a28;
+  --color-sidebar-surface: #2a1247;
+  --color-sidebar-hover: #3b1c63;
+  --color-sidebar-active: #7a2e9e;
   --color-sidebar-text: #ffffff;
-  --color-sidebar-text-muted: #b6a6dd;
-  --color-sidebar-border: #3b2170;
+  --color-sidebar-text-muted: #b8a4d6;
+  --color-sidebar-border: #3b1c63;
 
-  /* Semantic */
-  --color-success: #16a34a;
-  --color-success-hover: #15803d;
-  --color-warning: #d97706;
-  --color-danger: #dc2626;
+  /* Seal accent — reserved for the "signed" motif only, not the theme */
+  --color-seal: #b8862f;
+  --color-seal-dark: #8f6420;
+
+  /* Semantic (kept quiet/functional, not part of the brand palette) */
+  --color-success: #4f8a63;
+  --color-success-hover: #3d6c4d;
+  --color-warning: #b8792f;
+  --color-danger: #a13f3f;
 
   /* Shared */
   --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --shadow-sm: 0 2px 8px rgba(46, 16, 101, 0.08);
-  --shadow-md: 0 6px 20px rgba(46, 16, 101, 0.15);
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 2px 10px rgba(35, 12, 60, 0.08);
+  --shadow-md: 0 10px 30px rgba(35, 12, 60, 0.2);
+
+  /* Type: a serif with character for document titles, a clean grotesk
+     for UI chrome, and a mono for anything numeric (day counts,
+     percentages) — like a stamped ledger figure. */
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", "Courier New", monospace;
 }
 
 
-/* ============================================================
-   GENERAL
-   ============================================================ */
+/* General */
 
 * {
   box-sizing: border-box;
 }
 
 body {
-  font-family:
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Arial,
-    Helvetica,
-    sans-serif;
+  font-family: var(--font-body);
   background: var(--color-surface);
   color: var(--color-text);
   margin: 0;
 }
 
 
-/* ============================================================
-   LOGIN
-   ============================================================ */
+/* LOGIN */
 
 .login-container {
   height: 100vh;
@@ -76,11 +80,7 @@ body {
   justify-content: center;
   align-items: center;
 
-  background: linear-gradient(
-    160deg,
-    var(--color-sidebar-bg) 0%,
-    var(--color-primary-hover) 100%
-  );
+  background: linear-gradient(160deg, var(--color-sidebar-bg) 0%, var(--color-primary-hover) 100%);
 }
 
 .login-card {
@@ -100,8 +100,22 @@ body {
 
 .login-card h1 {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 6px;
   color: var(--color-text);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 28px;
+  letter-spacing: -0.01em;
+}
+
+.login-card h1::after {
+  content: "";
+  display: block;
+  width: 44px;
+  height: 3px;
+  background: var(--color-primary);
+  border-radius: 2px;
+  margin: 12px auto 8px;
 }
 
 .login-card input {
@@ -136,9 +150,7 @@ body {
 }
 
 
-/* ============================================================
-   DASHBOARD
-   ============================================================ */
+/* DASHBOARD */
 
 .dashboard {
   display: flex;
@@ -152,13 +164,18 @@ body {
   background: var(--color-sidebar-bg);
   color: var(--color-sidebar-text);
 
-  padding: 20px;
+  padding: 24px 20px;
   overflow-y: auto;
 }
 
 .sidebar h2 {
-  margin-bottom: 20px;
-  color: var(--color-sidebar-text);
+  margin: 0 0 22px;
+  color: var(--color-sidebar-text-muted);
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
 }
 
 .sidebar-empty {
@@ -217,15 +234,12 @@ body {
   flex: 1;
 
   padding: 40px;
-  background: var(--color-bg);
+  background:
+    radial-gradient(1100px 550px at 100% -12%, var(--color-primary-light) 0%, transparent 60%),
+    var(--color-bg);
   color: var(--color-text);
   overflow-y: auto;
   position: relative;
-}
-
-.content h1 {
-  color: var(--color-text);
-  margin-bottom: 6px;
 }
 
 .questionnaire-button {
@@ -253,13 +267,7 @@ body {
 }
 
 
-/* ============================================================
-   QUESTIONNAIRE
-   ============================================================ */
-
-.questionnaire-page {
-  max-width: 800px;
-}
+/* QUESTIONNAIRE */
 
 .questionnaire-page h1 {
   color: var(--color-text);
@@ -316,15 +324,35 @@ body {
 }
 
 
-/* ============================================================
-   SHARED PAGE / PANEL STYLING
-   ============================================================ */
+/* SHARED PAGE / PANEL STYLING */
 
 .policy-editor,
 .policy-viewer,
 .questionnaire-page,
 .incident-page {
   max-width: 800px;
+}
+
+.content h1 {
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 30px;
+  letter-spacing: -0.01em;
+  margin: 0 0 12px;
+  position: relative;
+  padding-bottom: 14px;
+}
+
+.content h1::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 52px;
+  height: 3px;
+  background: var(--color-primary);
+  border-radius: 2px;
 }
 
 .editor-hint {
@@ -341,9 +369,7 @@ body {
 }
 
 
-/* ============================================================
-   POLICY EDITOR (HR)
-   ============================================================ */
+/* POLICY EDITOR (HR) */
 
 .policy-editor-textarea {
   width: 100%;
@@ -442,109 +468,8 @@ body {
   font-weight: bold;
 }
 
-.history-button {
-  padding: 12px 20px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg);
-  color: var(--color-text);
-  cursor: pointer;
-  font-size: 16px;
-}
 
-.history-button:hover {
-  background: var(--color-surface);
-}
-
-
-/* ============================================================
-   POLICY HISTORY PANEL
-   ============================================================ */
-
-.history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  overflow-y: auto;
-}
-
-.history-entry {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 10px 12px;
-}
-
-.history-entry-current {
-  background: var(--color-surface);
-}
-
-.history-entry-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-
-.history-entry-toggle {
-  width: 100%;
-  border: none;
-  background: none;
-  padding: 0;
-  cursor: pointer;
-  text-align: left;
-}
-
-.history-entry-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.history-entry-date {
-  font-size: 12px;
-  color: var(--color-text-muted);
-}
-
-.history-entry-tone {
-  font-size: 12px;
-  color: var(--color-text-muted);
-  margin-top: 2px;
-}
-
-.history-entry-preview {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--color-border);
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--color-text);
-  white-space: pre-wrap;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-
-/* ============================================================
-   UPLOAD POLICY FORM
-   ============================================================ */
-
-.upload-preview {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 12px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--color-text);
-  white-space: pre-wrap;
-  max-height: 240px;
-  overflow-y: auto;
-  background: var(--color-surface);
-}
-
-
-/* ============================================================
-   POLICY VIEWER (Employee)
-   ============================================================ */
+/* POLICY VIEWER (Employee) — improved reading experience */
 
 .policy-viewer-header {
   position: sticky;
@@ -558,6 +483,47 @@ body {
 .signed-note {
   color: var(--color-success);
   font-weight: bold;
+}
+
+/* The one deliberate signature flourish in this design: an actual
+   sign-off seal, used only where a policy has genuinely been signed. */
+.signed-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 16px 6px 6px;
+  background: var(--color-primary-light);
+  border-radius: 999px;
+  color: var(--color-text);
+  font-weight: 600;
+  font-size: 13.5px;
+}
+
+.seal-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--color-seal), var(--color-seal-dark));
+  box-shadow: 0 1px 2px rgba(35, 12, 60, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+}
+
+.seal-badge svg {
+  width: 13px;
+  height: 13px;
+}
+
+.seal-badge-sm {
+  width: 20px;
+  height: 20px;
+}
+
+.seal-badge-sm svg {
+  width: 10px;
+  height: 10px;
 }
 
 .pending-note {
@@ -614,7 +580,9 @@ body {
 
 .policy-text h2 {
   margin-top: 0;
-  font-size: 19px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 20px;
   color: var(--color-primary-hover);
   border-bottom: 1px solid var(--color-border);
   padding-bottom: 10px;
@@ -638,9 +606,7 @@ body {
 }
 
 
-/* ============================================================
-   AI HIGHLIGHTING
-   ============================================================ */
+/* AI HIGHLIGHTING */
 
 .highlighter {
   position: relative;
@@ -685,9 +651,7 @@ body {
 }
 
 
-/* ============================================================
-   AI RESPONSE PANEL
-   ============================================================ */
+/* AI RESPONSE PANEL */
 
 .ai-panel {
   position: fixed;
@@ -797,36 +761,52 @@ body {
 }
 
 
-/* ============================================================
-   ROLE FOLDERS (HR SIDEBAR)
-   ============================================================ */
+/* ROLE FOLDERS (HR sidebar) — styled as real hanging folders, tab and
+   all, with a ledger-line spine connecting the documents inside. */
 
 .role-folder {
-  margin-bottom: 6px;
+  margin: 18px 0 6px;
 }
 
 .role-folder-header {
+  position: relative;
   width: 100%;
   display: flex;
   align-items: center;
   gap: 8px;
 
+  margin-top: 8px;
   padding: 10px 12px;
-  background: transparent;
+  background: var(--color-sidebar-surface);
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 3px var(--radius-sm) var(--radius-sm) var(--radius-sm);
 
   color: var(--color-sidebar-text-muted);
-  font-weight: bold;
+  font-family: var(--font-body);
+  font-weight: 700;
   text-transform: uppercase;
   font-size: 12px;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.08em;
 
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.role-folder-header:hover {
+.role-folder-header::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: 12px;
+  width: 32px;
+  height: 8px;
   background: var(--color-sidebar-surface);
+  border-radius: 4px 4px 0 0;
+  transition: background 0.15s ease;
+}
+
+.role-folder-header:hover,
+.role-folder-header:hover::before {
+  background: var(--color-sidebar-hover);
   color: white;
 }
 
@@ -840,16 +820,18 @@ body {
 }
 
 .role-folder-count {
-  background: var(--color-sidebar-surface);
+  background: var(--color-sidebar-bg);
   color: var(--color-sidebar-text-muted);
   border-radius: 999px;
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
   padding: 2px 7px;
 }
 
 .role-folder-body {
-  padding-left: 10px;
-  margin-bottom: 6px;
+  padding-left: 14px;
+  margin: 4px 0 10px 10px;
+  border-left: 2px solid var(--color-sidebar-border);
 }
 
 .tab-nested {
@@ -910,9 +892,7 @@ body {
 }
 
 
-/* ============================================================
-   TEMPLATE / ROLE PICKER
-   ============================================================ */
+/* TEMPLATE / ROLE PICKER (Questionnaire steps) */
 
 .template-grid {
   display: grid;
@@ -930,9 +910,7 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
   cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .template-card:hover {
@@ -1000,9 +978,7 @@ body {
 }
 
 
-/* ============================================================
-   OVERALL POLICY VIEW
-   ============================================================ */
+/* OVERALL POLICY VIEW (HR) */
 
 .overall-sections {
   max-width: 800px;
@@ -1022,8 +998,10 @@ body {
 
 .overall-section h2 {
   margin-top: 0;
-  font-size: 18px;
-  color: var(--color-text);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 19px;
+  color: var(--color-primary-hover);
 }
 
 .editor-note {
@@ -1033,9 +1011,7 @@ body {
 }
 
 
-/* ============================================================
-   EXPIRATION TIMELINE
-   ============================================================ */
+/* EXPIRATION TIMELINE */
 
 .expiration-panel {
   display: flex;
@@ -1045,9 +1021,10 @@ body {
 }
 
 .expiration-panel-title {
-  font-size: 14px;
+  font-size: 15px;
+  font-family: var(--font-display);
   font-weight: 600;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   color: var(--color-text);
 }
 
@@ -1080,13 +1057,13 @@ body {
 .tl-days {
   text-align: right;
   color: var(--color-text-muted);
-  font-size: 11.5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
 }
 
 
-/* ============================================================
-   SIGNATURES PIE CHART + OVERALL STATS ROW
-   ============================================================ */
+/* SIGNATURES PIE CHART + OVERALL STATS ROW */
 
 .overall-stats-row {
   display: grid;
@@ -1109,6 +1086,16 @@ body {
   text-align: center;
 }
 
+.signatures-chart-ring {
+  position: relative;
+}
+
+.signatures-chart-seal {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+}
+
 .signatures-caption {
   margin: 10px 0 0;
   font-size: 12.5px;
@@ -1116,9 +1103,7 @@ body {
 }
 
 
-/* ============================================================
-   CHAT MESSAGE BUBBLES
-   ============================================================ */
+/* CHAT MESSAGE BUBBLES (reused by Incident Report chat) */
 
 .lawyer-empty {
   font-size: 13px;
@@ -1151,9 +1136,7 @@ body {
 }
 
 
-/* ============================================================
-   INCIDENT REPORT
-   ============================================================ */
+/* INCIDENT REPORT */
 
 .incident-layout {
   display: grid;
@@ -1192,9 +1175,11 @@ body {
 }
 
 .incident-report h2 {
-  font-size: 16px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 17px;
   margin-top: 0;
-  color: var(--color-text);
+  color: var(--color-primary-hover);
 }
 
 .incident-report h2 + h2 {
@@ -1287,17 +1272,4 @@ body {
   .tab {
     font-size: 14px;
   }
-}
-
-
-/* ============================================================
-   TEAM
-   ============================================================ */
-
-.team-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 20px;
-  padding: 12px 16px;
-  align-items: center;
 }
