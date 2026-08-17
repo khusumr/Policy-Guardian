@@ -7,16 +7,39 @@ function trim(text, max = 120) {
   return text.slice(0, max) + "…";
 }
 
-export async function askAIAboutText(question, highlightedText) {
-  await delay(600);
 
-  return (
-    `Here's a plain-language take on the highlighted section: "${trim(highlightedText)}"\n\n` +
-    `Regarding your question — "${question}" — this clause generally means employees ` +
-    `should follow the stated rule under normal conditions, with exceptions handled by ` +
-    `HR case-by-case. (Placeholder response — connect a real AI backend to replace this.)`
+// --------------------------------------------------
+// Ask AI About Selected Policy Text
+// --------------------------------------------------
+
+export async function askAIAboutText(question, highlightedText) {
+  const response = await fetch(
+    "https://app-ai-policy-backend.azurewebsites.net/ask-ai",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        highlighted_text: highlightedText,
+        question,
+      }),
+    }
   );
+
+  if (!response.ok) {
+    throw new Error(`Backend returned ${response.status}`);
+  }
+
+  const data = await response.json();
+
+  return data.answer;
 }
+
+
+// --------------------------------------------------
+// Reword Selected Policy Text
+// --------------------------------------------------
 
 export async function rewordText(instruction, highlightedText) {
   const response = await fetch(
@@ -38,10 +61,14 @@ export async function rewordText(instruction, highlightedText) {
   }
 
   const data = await response.json();
+
   return data.policy;
 }
 
+
+// --------------------------------------------------
 // Incident Report AI
+// --------------------------------------------------
 
 export async function replyToIncidentMessage(conversationSoFar) {
   await delay(500);
@@ -61,6 +88,7 @@ export async function replyToIncidentMessage(conversationSoFar) {
   return 'Understood — feel free to add anything else, or click "Generate Summary Report" when you\'re ready.';
 }
 
+
 export async function summarizeIncident(conversation) {
   await delay(900);
 
@@ -76,6 +104,7 @@ export async function summarizeIncident(conversation) {
   );
 }
 
+
 export async function suggestIncidentNextSteps() {
   await delay(700);
 
@@ -86,18 +115,4 @@ export async function suggestIncidentNextSteps() {
     "Check in with anyone involved or affected within the next 24–48 hours.",
     "Placeholder next steps — connect a real AI backend for guidance tailored to this specific incident.",
   ];
-}
-
-// Lawyer Chat AI
-
-export async function askLawyer(question) {
-  await delay(700);
-
-  return (
-    `Disclaimer: this is a placeholder legal assistant for prototyping only, not real legal advice.\n\n` +
-    `Regarding "${trim(question, 80)}" — you'd want a licensed employment attorney to confirm this for ` +
-    `your specific state and industry, but generally a clause like this should reference the applicable ` +
-    `state and federal requirements explicitly. (Placeholder response — connect a real legal AI backend ` +
-    `to replace this.)`
-  );
 }

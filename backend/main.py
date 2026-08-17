@@ -146,6 +146,30 @@ class RefinePolicyRequest(BaseModel):
         return value
 
 
+class AskAIRequest(BaseModel):
+    highlighted_text: str = Field(
+        ...,
+        min_length=3,
+        max_length=20000,
+    )
+
+    question: str = Field(
+        ...,
+        min_length=3,
+        max_length=500,
+    )
+
+    @field_validator("highlighted_text", "question")
+    @classmethod
+    def validate_not_blank(cls, value: str):
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Field cannot be blank.")
+
+        return value
+
+
 # --------------------------------------------------
 # Health
 # --------------------------------------------------
@@ -257,6 +281,56 @@ Important rules:
     return {
         "policy": refined_policy
     }
+
+# --------------------------------------------------
+# Ask AI About Selected Policy Text
+# --------------------------------------------------
+
+@app.post(
+    "/ask-ai",
+    tags=["AI Policies"],
+    summary="Ask AI a question about selected policy text",
+)
+def ask_ai(request: AskAIRequest):
+    logger.info("Received Ask AI request")
+
+    try:
+        prompt = f"""
+You are an HR policy assistant.
+
+The user selected this text from an HR policy:
+
+--- SELECTED TEXT ---
+{request.highlighted_text}
+--- END SELECTED TEXT ---
+
+User question:
+{request.question}
+
+Answer the user's question clearly and concisely.
+
+Important rules:
+- Answer only based on the selected policy text.
+- Do not invent company-specific information.
+- Explain the text in clear, easy-to-understand language.
+- Do not rewrite the policy unless the user specifically asks for an explanation of wording.
+"""
+
+        answer = openai_service.generate_policy(prompt)
+
+        logger.info("Successfully answered Ask AI question")
+
+        return {
+            "answer": answer
+        }
+
+    except Exception as e:
+        logger.error(f"Ask AI failed: {e}")
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to answer question. Please try again.",
+        )
 
 
 # --------------------------------------------------
