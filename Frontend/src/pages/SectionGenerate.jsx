@@ -1,32 +1,63 @@
 import { useState } from "react";
 import QuestionnaireForm from "../components/hr/QuestionnaireForm";
-import { SECTION_TEMPLATES, applyTone } from "../data/policyTemplates";
+import { SECTION_TEMPLATES } from "../data/policyTemplates";
 import { createSection, roleLabel } from "../data/store";
 
-// Shown the first time someone clicks a fixed-template tab (Work From
-// Home, PTO, etc.) that hasn't been generated for this role yet. A
-// button reveals the questionnaire; submitting it creates the section,
-// and from then on the sidebar tab opens straight into SectionEditor.
 function SectionGenerate({ role, sectionType, onSectionCreated }) {
   const [showForm, setShowForm] = useState(false);
   const template = SECTION_TEMPLATES[sectionType];
 
-  function handleGenerate({ title, tone, answers }) {
-    const content = applyTone(template.generate(answers), tone, template.label);
-    const section = createSection({
-      role,
-      sectionType,
-      title: title || template.label,
-      content,
-      tone,
-      answers,
-    });
-    onSectionCreated(section);
+  async function handleGenerate({ title, tone, answers }) {
+    try {
+      const requirements = Object.values(answers).filter(Boolean);
+
+      const policyType =
+        sectionType === "security"
+          ? "Security Policy"
+          : template.label;
+
+      const response = await fetch(
+        "https://app-ai-policy-backend.azurewebsites.net/generate-policy",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            company_name: "Bug Busters",
+            policy_type: policyType,
+            tone,
+            requirements,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Backend returned ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      const section = createSection({
+        role,
+        sectionType,
+        title: title || template.label,
+        content: data.policy,
+        tone,
+        answers,
+      });
+
+      onSectionCreated(section);
+    } catch (error) {
+      console.error("Policy generation failed:", error);
+      alert("Failed to generate policy. Please try again.");
+    }
   }
 
   return (
     <div className="questionnaire-page">
       <h1>{template.label}</h1>
+
       <p className="editor-hint">
         {roleLabel(role)}
         {template.description ? ` · ${template.description}` : ""}
@@ -34,8 +65,14 @@ function SectionGenerate({ role, sectionType, onSectionCreated }) {
 
       {!showForm ? (
         <>
-          <p>This section hasn't been created for the {roleLabel(role)} role yet.</p>
-          <button className="questionnaire-button" onClick={() => setShowForm(true)}>
+          <p>
+            This section hasn't been created for the {roleLabel(role)} role yet.
+          </p>
+
+          <button
+            className="questionnaire-button"
+            onClick={() => setShowForm(true)}
+          >
             Start Questionnaire
           </button>
         </>
