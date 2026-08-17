@@ -4,7 +4,7 @@ import {
   getMockUsersByRole,
   roleLabel,
   getMockManager,
-} from "../data/store";
+} from "../Data/store";
 
 // Shows every section for a role stitched into one document.
 // HR can select specific people and send the policy to them.

@@ -12,7 +12,7 @@ import {
   getAssignmentsForEmployee,
   getMockUsersByRole,
   getMockManager,
-} from "../data/store";
+} from "../Data/store";
 
 function HRDashboard({ user }) {
   const [sections, setSections] = useState(getSections());

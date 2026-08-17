@@ -1,6 +1,6 @@
 import QuestionnaireForm from "../components/hr/QuestionnaireForm";
-import { SECTION_TEMPLATES, applyTone } from "../data/policyTemplates";
-import { createSection, roleLabel } from "../data/store";
+import { SECTION_TEMPLATES, applyTone } from "../Data/policyTemplates";
+import { createSection, roleLabel } from "../Data/store";
 
 function CustomSectionForm({ role, onSectionCreated }) {
   const template = SECTION_TEMPLATES.custom;

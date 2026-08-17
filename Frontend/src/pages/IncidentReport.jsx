@@ -3,7 +3,7 @@ import {
   replyToIncidentMessage,
   summarizeIncident,
   suggestIncidentNextSteps,
-} from "../data/aiMock";
+} from "../Data/aiMock";
 
 // A private, unshared chat for a manager or HR person to talk through
 // an incident, then generate a summary + suggested next steps. Nothing

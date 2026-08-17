@@ -1,4 +1,4 @@
-import { roleLabel } from "../../data/store";
+import { roleLabel } from "../../Data/store";
 
 function EmployeeSidebar({
   assignments,

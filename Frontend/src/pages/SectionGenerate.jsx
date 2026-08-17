@@ -1,7 +1,7 @@
 import { useState } from "react";
 import QuestionnaireForm from "../components/hr/QuestionnaireForm";
-import { SECTION_TEMPLATES } from "../data/policyTemplates";
-import { createSection, roleLabel } from "../data/store";
+import { SECTION_TEMPLATES } from "../Data/policyTemplates";
+import { createSection, roleLabel } from "../Data/store";
 
 function SectionGenerate({ role, sectionType, onSectionCreated }) {
   const [showForm, setShowForm] = useState(false);

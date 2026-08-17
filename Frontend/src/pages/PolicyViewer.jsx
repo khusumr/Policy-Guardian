@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Highlighter from "../components/ai/Highlighter";
 import AIResponsePanel from "../components/ai/AIResponsePanel";
-import { signAssignment, roleLabel } from "../data/store";
+import { signAssignment, roleLabel } from "../Data/store";
 
 // Jump-to-section anchors so a multi-part policy (WFH + PTO + Code of
 // Conduct, etc. all stitched together) is easy to navigate instead of
