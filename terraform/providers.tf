@@ -17,10 +17,10 @@ terraform {
   # whoever's laptop last ran `apply`, which breaks the moment two people
   # touch infra or that laptop is unavailable.
   backend "azurerm" {
-    resource_group_name = "BugBusters"
+    resource_group_name  = "BugBusters"
     storage_account_name = "sttfstatebugbusters"
-    container_name        = "tfstate"
-    key                    = "app.terraform.tfstate"
+    container_name       = "tfstate"
+    key                  = "app.terraform.tfstate"
   }
 }
 

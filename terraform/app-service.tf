@@ -7,16 +7,16 @@
 resource "azurerm_service_plan" "backend" {
   name                = "asp-ai-policy-backend"
   resource_group_name = data.azurerm_resource_group.main.name
-  location             = data.azurerm_resource_group.main.location
-  os_type              = "Linux"
-  sku_name             = "B1"
+  location            = data.azurerm_resource_group.main.location
+  os_type             = "Linux"
+  sku_name            = "B1"
 }
 
 resource "azurerm_linux_web_app" "backend" {
   name                = "app-ai-policy-backend"
   resource_group_name = data.azurerm_resource_group.main.name
-  location             = data.azurerm_resource_group.main.location
-  service_plan_id      = azurerm_service_plan.backend.id
+  location            = data.azurerm_resource_group.main.location
+  service_plan_id     = azurerm_service_plan.backend.id
 
   site_config {
     application_stack {
@@ -45,9 +45,9 @@ resource "azurerm_linux_web_app" "backend" {
     # Placeholders — openai_service.py already handles these being unset
     # (falls back to its placeholder response), so leaving blank here is
     # safe until real Azure OpenAI credentials exist.
-    "AZURE_OPENAI_ENDPOINT"   = ""
-    "AZURE_OPENAI_API_KEY"    = ""
-    "AZURE_OPENAI_DEPLOYMENT" = ""
+    "AZURE_OPENAI_ENDPOINT"   = var.azure_openai_endpoint
+    "AZURE_OPENAI_API_KEY"    = var.azure_openai_api_key
+    "AZURE_OPENAI_DEPLOYMENT" = var.azure_openai_deployment
   }
 }
 
