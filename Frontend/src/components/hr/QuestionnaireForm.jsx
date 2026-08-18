@@ -44,11 +44,12 @@ function QuestionnaireForm({ fields, initialTitle, onGenerate, submitLabel = "Ge
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="e.g. Work From Home"
+          required
         />
       </Field>
 
       <Field label="Tone">
-        <Select value={tone} onChange={(e) => setTone(e.target.value)}>
+        <Select value={tone} onChange={(e) => setTone(e.target.value)} required>
           {TONE_OPTIONS.map((opt) => (
             <option key={opt} value={opt}>
               {opt}
@@ -63,6 +64,7 @@ function QuestionnaireForm({ fields, initialTitle, onGenerate, submitLabel = "Ge
             <Select
               value={answers[field.key] || ""}
               onChange={(e) => updateField(field.key, e.target.value)}
+              required
             >
               <option value="" disabled>
                 Select an option
@@ -78,6 +80,7 @@ function QuestionnaireForm({ fields, initialTitle, onGenerate, submitLabel = "Ge
               placeholder={field.placeholder || ""}
               value={answers[field.key] || ""}
               onChange={(e) => updateField(field.key, e.target.value)}
+              required
             />
           )}
         </Field>

@@ -13,7 +13,7 @@ const NAV_TABS = [
   { key: "settings", label: "Settings" },
 ];
 
-function EmployeeDashboard({ user }) {
+function EmployeeDashboard({ user, onLogout }) {
   const [view, setView] = useState("home"); // "home" | "settings"
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   // Signing a policy mutates the store (localStorage) directly, so this
@@ -24,6 +24,13 @@ function EmployeeDashboard({ user }) {
   const firstName = person?.name || user;
   const assignments = getAssignmentsForEmployee(user);
   const pendingCount = assignments.filter((a) => a.status !== "signed").length;
+  const policyContext = assignments
+    .map(
+      (a) =>
+        `${roleLabel(a.role)} Policy:\n` +
+        a.parts.map((p) => `${p.title}\n${p.content}`).join("\n\n")
+    )
+    .join("\n\n---\n\n");
 
   function handleSigned() {
     forceRefresh((n) => n + 1);
@@ -34,7 +41,7 @@ function EmployeeDashboard({ user }) {
 
   return (
     <div>
-      <TopNav tabs={NAV_TABS} activeTab={view} onTabChange={setView} userName={firstName} userRole={person?.role || "employee"} />
+      <TopNav tabs={NAV_TABS} activeTab={view} onTabChange={setView} userName={firstName} userRole={person?.role || "employee"} onLogout={onLogout} />
 
       {view === "settings" ? (
         <div className="content">
@@ -82,7 +89,12 @@ function EmployeeDashboard({ user }) {
                         <td data-label="Sent">{formatShortDate(a.sentAt)}</td>
                         <td data-label="Action" style={{ textAlign: "right" }}>
                           {a.status === "signed" ? (
-                            <Tag variant="accent">Signed {formatShortDate(a.signedAt)}</Tag>
+                            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }}>
+                              <Tag variant="accent">Signed {formatShortDate(a.signedAt)}</Tag>
+                              <Button variant="secondary" size="sm" onClick={() => setSelectedAssignment(a)}>
+                                View
+                              </Button>
+                            </div>
                           ) : (
                             <Button variant="primary" size="sm" onClick={() => setSelectedAssignment(a)}>
                               Read &amp; sign
@@ -97,7 +109,7 @@ function EmployeeDashboard({ user }) {
             </div>
 
             <div style={{ width: 330 }}>
-              <AskPolicyPanel />
+              <AskPolicyPanel policyContext={policyContext} />
             </div>
           </div>
         </div>

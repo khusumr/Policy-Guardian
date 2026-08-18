@@ -1,6 +1,6 @@
 // Shared top nav — brand wordmark, Home/Policies/Settings-style tabs,
 // and the signed-in user chip. Used across every signed-in dashboard.
-function TopNav({ tabs, activeTab, onTabChange, userName, userRole }) {
+function TopNav({ tabs, activeTab, onTabChange, userName, userRole, onLogout }) {
   return (
     <nav className="nav">
       <div className="nav-brand">
@@ -23,6 +23,12 @@ function TopNav({ tabs, activeTab, onTabChange, userName, userRole }) {
           {userName}
           {userRole ? ` · ${userRole}` : ""}
         </span>
+      )}
+
+      {onLogout && (
+        <button className="nav-tab nav-logout" onClick={onLogout}>
+          Log out
+        </button>
       )}
     </nav>
   );

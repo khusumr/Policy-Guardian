@@ -18,6 +18,7 @@ import {
   getAssignmentsForEmployee,
   getMockUsersByRole,
   getMockManager,
+  getMockTeam,
   getExpirationInfo,
   roleLabel,
 } from "../Data/store";
@@ -26,6 +27,7 @@ import { greeting, formattedToday, formatShortDate, relativeTime } from "../util
 const NAV_TABS = [
   { key: "home", label: "Home" },
   { key: "policies", label: "Policies" },
+  { key: "teams", label: "Teams" },
   { key: "settings", label: "Settings" },
 ];
 
@@ -45,7 +47,7 @@ function getEmployeeStatus(employeeId) {
   return { variant: "amber", label: "Pending" };
 }
 
-function HRDashboard({ user }) {
+function HRDashboard({ user, onLogout }) {
   const [view, setView] = useState("home"); // "home" | "policies" | "settings"
   const [sections, setSections] = useState(getSections());
   const [page, setPage] = useState("home");
@@ -104,9 +106,8 @@ function HRDashboard({ user }) {
     setSelectedSection(section);
   }
 
-  // Employees who belong to a manager's team.
-  // Managers themselves are not included in this table.
   const teamMembers = [
+    ...getMockUsersByRole("manager"),
     ...getMockUsersByRole("intern"),
     ...getMockUsersByRole("engineer"),
   ];
@@ -143,6 +144,12 @@ function HRDashboard({ user }) {
       ? selectedSection.id
       : page === "generate" && pending
       ? `pending:${pending.role}:${pending.sectionType}`
+      : page === "customQuestionnaire" && customSectionRole
+      ? `custom:${customSectionRole}`
+      : page === "upload" && uploadRole
+      ? `upload:${uploadRole}`
+      : page === "incident"
+      ? "incident"
       : null;
 
   return (
@@ -153,6 +160,7 @@ function HRDashboard({ user }) {
         onTabChange={setView}
         userName="Dana"
         userRole="hr"
+        onLogout={onLogout}
       />
 
       {view === "policies" ? (
@@ -170,25 +178,82 @@ function HRDashboard({ user }) {
 
           <div className="content">
             {page === "editor" && selectedSection ? (
-              <SectionEditor section={selectedSection} onUpdated={handleSectionUpdated} />
+              <SectionEditor key={selectedSection.id} section={selectedSection} onUpdated={handleSectionUpdated} />
             ) : page === "overall" && selectedRole ? (
-              <PolicyOverall role={selectedRole} sections={sections} />
+              <PolicyOverall key={selectedRole} role={selectedRole} sections={sections} />
             ) : page === "generate" && pending ? (
               <SectionGenerate
+                key={`${pending.role}:${pending.sectionType}`}
                 role={pending.role}
                 sectionType={pending.sectionType}
                 onSectionCreated={handleSectionCreated}
               />
             ) : page === "customQuestionnaire" && customSectionRole ? (
-              <CustomSectionForm role={customSectionRole} onSectionCreated={handleSectionCreated} />
+              <CustomSectionForm key={customSectionRole} role={customSectionRole} onSectionCreated={handleSectionCreated} />
             ) : page === "upload" && uploadRole ? (
-              <UploadPolicyForm role={uploadRole} onSectionCreated={handleSectionCreated} />
+              <UploadPolicyForm key={uploadRole} role={uploadRole} onSectionCreated={handleSectionCreated} />
             ) : page === "incident" ? (
               <IncidentReport />
             ) : (
               <PolicyLibrary onOpenRole={handleSelectOverall} />
             )}
           </div>
+        </div>
+      ) : view === "teams" ? (
+        <div className="content">
+          <div className="page-kicker">Teams</div>
+          <h1 style={{ margin: "0 0 6px" }}>Managers &amp; their reports</h1>
+          <p className="page-lede">
+            Every manager's team, grouped together, with each person's signing status.
+          </p>
+
+          {getMockUsersByRole("manager").length === 0 ? (
+            <p className="sidebar-empty">No managers yet.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+              {getMockUsersByRole("manager").map((manager) => {
+                const reports = getMockTeam(manager.id);
+                const managerStatus = getEmployeeStatus(manager.id);
+
+                return (
+                  <div key={manager.id}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                      <h3 style={{ margin: 0 }}>{manager.name}'s Team</h3>
+                      <Tag variant={managerStatus.variant}>Manager · {managerStatus.label}</Tag>
+                    </div>
+
+                    {reports.length === 0 ? (
+                      <p className="sidebar-empty">No reports yet.</p>
+                    ) : (
+                      <table className="table">
+                        <thead>
+                          <tr>
+                            <th>Employee</th>
+                            <th>Role</th>
+                            <th style={{ textAlign: "right" }}>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {reports.map((member) => {
+                            const status = getEmployeeStatus(member.id);
+                            return (
+                              <tr key={member.id}>
+                                <td data-label="Employee" style={{ fontWeight: 600 }}>{member.name}</td>
+                                <td data-label="Role">{roleLabel(member.role)}</td>
+                                <td data-label="Status" style={{ textAlign: "right" }}>
+                                  <Tag variant={status.variant}>{status.label}</Tag>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       ) : view === "settings" ? (
         <div className="content">
@@ -261,7 +326,9 @@ function HRDashboard({ user }) {
                       return (
                         <tr key={member.id}>
                           <td data-label="Employee" style={{ fontWeight: 600 }}>{member.name}</td>
-                          <td data-label="Team">{manager ? `${manager.name}'s Team` : "No Team"}</td>
+                          <td data-label="Team">
+                            {member.role === "manager" ? "—" : manager ? `${manager.name}'s Team` : "No Team"}
+                          </td>
                           <td data-label="Role">{roleLabel(member.role)}</td>
                           <td data-label="Status" style={{ textAlign: "right" }}>
                             <Tag variant={status.variant}>{status.label}</Tag>

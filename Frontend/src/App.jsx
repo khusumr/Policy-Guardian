@@ -20,13 +20,13 @@ function App() {
       {user === null ? (
         <Login setUser={setUser} />
       ) : user === "hr" ? (
-        <HRDashboard user={user} />
+        <HRDashboard user={user} onLogout={() => setUser(null)} />
       ) : user === "manager1" || user === "manager2" ? (
-        <ManagerDashboard user={user} />
+        <ManagerDashboard user={user} onLogout={() => setUser(null)} />
       ) : user === "engineer1" || user === "engineer2" ? (
-        <EngineerDashboard user={user} />
+        <EngineerDashboard user={user} onLogout={() => setUser(null)} />
       ) : (
-        <EmployeeDashboard user={user} />
+        <EmployeeDashboard user={user} onLogout={() => setUser(null)} />
       )}
     </>
   );

@@ -7,13 +7,7 @@ const ROLES = [
   { key: "hr", title: "HR", description: "Full authoring + tracking", demoUser: "hr" },
   { key: "manager", title: "Manager", description: "Team signing status", demoUser: "alice" },
   { key: "intern", title: "Intern", description: "Read, ask, sign", demoUser: "charlie" },
-  {
-    key: "engineer",
-    title: "Engineer",
-    description: "Read-only preview",
-    demoUser: "ethan",
-    wip: true,
-  },
+  { key: "engineer", title: "Engineer", description: "Read, ask, sign", demoUser: "ethan" },
 ];
 
 // Demo credentials — swap for real auth once a backend exists.
@@ -80,17 +74,8 @@ function Login({ setUser }) {
                 value={r.key}
                 checked={role === r.key}
                 onChange={() => selectRole(r)}
-                title={
-                  r.wip ? (
-                    <>
-                      {r.title} <span className="tag tag-neutral">WIP</span>
-                    </>
-                  ) : (
-                    r.title
-                  )
-                }
+                title={r.title}
                 description={r.description}
-                wip={r.wip}
               />
             ))}
           </div>

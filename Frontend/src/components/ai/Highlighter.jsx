@@ -94,14 +94,16 @@ function Highlighter({ children, onAskAI, onReword }) {
           >
             Ask AI
           </button>
-          <button
-            onClick={() => {
-              onReword(toolbar.text);
-              setToolbar(null);
-            }}
-          >
-            Reword
-          </button>
+          {onReword && (
+            <button
+              onClick={() => {
+                onReword(toolbar.text);
+                setToolbar(null);
+              }}
+            >
+              Reword
+            </button>
+          )}
         </div>
       )}
     </div>
