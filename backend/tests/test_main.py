@@ -426,3 +426,72 @@ def test_upload_policy_empty_file():
 
     assert response.status_code == 400
     assert "Could not extract any text" in response.json()["detail"]
+
+
+# --------------------------------------------------
+# Policy Edit — PATCH /policies/{org_id}/{policy_id}
+# --------------------------------------------------
+
+@patch("main.update_policy")
+def test_edit_policy_success(mock_update):
+    mock_update.return_value = SimpleNamespace(
+        id="policy-1",
+        content="Updated policy text goes here.",
+        version=2,
+    )
+
+    response = client.patch(
+        "/policies/test-org/policy-1",
+        json={
+            "content": "Updated policy text goes here.",
+            "edited_by": "dana@bugbusters.io",
+        },
+    )
+
+    assert response.status_code == 200
+    mock_update.assert_called_once_with(
+        "test-org",
+        "policy-1",
+        {"content": "Updated policy text goes here."},
+        edited_by="dana@bugbusters.io",
+    )
+
+
+@patch("main.update_policy")
+def test_edit_policy_not_found(mock_update):
+    mock_update.return_value = None
+
+    response = client.patch(
+        "/policies/test-org/missing-policy",
+        json={"content": "Updated policy text goes here."},
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Policy not found"}
+
+
+def test_edit_policy_content_too_short():
+    response = client.patch(
+        "/policies/test-org/policy-1",
+        json={"content": "short"},
+    )
+
+    assert response.status_code == 422
+
+
+# --------------------------------------------------
+# Policy History — GET /policies/{org_id}/{policy_id}/history
+# --------------------------------------------------
+
+@patch("main.get_policy_history")
+def test_policy_history(mock_history):
+    mock_history.return_value = [
+        {"policy_id": "policy-1", "version": 1, "content": "First version"},
+    ]
+
+    response = client.get("/policies/test-org/policy-1/history")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["version"] == 1

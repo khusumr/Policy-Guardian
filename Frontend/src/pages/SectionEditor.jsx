@@ -2,6 +2,7 @@ import { Fragment, useRef, useState } from "react";
 import AIResponsePanel from "../components/ai/AIResponsePanel";
 import PolicyHistoryPanel from "../components/PolicyHistoryPanel";
 import CitationsPanel from "../components/CitationsPanel";
+import BackendHistoryPanel from "../components/BackendHistoryPanel";
 import Button from "../components/ui/Button";
 import { saveSection, restoreSectionVersion } from "../Data/store";
 import { SECTION_TEMPLATES } from "../Data/policyTemplates";
@@ -65,8 +66,13 @@ function SectionEditor({ section, onUpdated }) {
 
     setExporting(format);
     try {
-      // Export exactly what's on screen, including unsaved edits.
-      await exportSection({ ...currentSection, content }, format);
+      // Export exactly what's on screen, including unsaved edits. The
+      // first export creates a backend record; every export after that
+      // PATCHes it instead, so version history actually builds up.
+      const saved = await exportSection({ ...currentSection, content }, format);
+      const updated = saveSection({ ...currentSection, content, backendPolicyId: saved.id });
+      setCurrentSection(updated);
+      onUpdated(updated);
     } catch (err) {
       console.error(err);
       alert(`Failed to export as ${format.toUpperCase()}. Please try again.`);
@@ -129,6 +135,11 @@ function SectionEditor({ section, onUpdated }) {
         <Button variant="secondary" disabled={!!exporting} onClick={() => handleExport("docx")}>
           {exporting === "docx" ? "Exporting…" : "Download DOCX"}
         </Button>
+        {currentSection.backendPolicyId && (
+          <Button variant="secondary" onClick={() => setActivePanel("backendHistory")}>
+            Backend History
+          </Button>
+        )}
       </div>
 
       {savedNote && <p className="sent-confirmation">Saved.</p>}
@@ -160,6 +171,13 @@ function SectionEditor({ section, onUpdated }) {
         <CitationsPanel
           label={template?.label || section.title}
           citations={citations}
+          onClose={() => setActivePanel(null)}
+        />
+      )}
+
+      {activePanel === "backendHistory" && currentSection.backendPolicyId && (
+        <BackendHistoryPanel
+          policyId={currentSection.backendPolicyId}
           onClose={() => setActivePanel(null)}
         />
       )}
