@@ -42,7 +42,7 @@ resource "azurerm_storage_container" "generated_policies" {
 resource "azurerm_static_web_app" "frontend" {
   name                = "app-ai-policy-frontend"
   resource_group_name = data.azurerm_resource_group.main.name
-  location            = data.azurerm_resource_group.main.location
+  location            = "eastus2"
 
   sku_tier = "Free"
   sku_size = "Free"
