@@ -8,7 +8,7 @@ from logger import get_logger
 
 logger = get_logger(__name__)
 
-CONTAINER_NAME = "policies"
+CONTAINER_NAME = "generated-policies"
 
 
 class StorageService:
