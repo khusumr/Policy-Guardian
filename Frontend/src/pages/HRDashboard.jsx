@@ -16,7 +16,13 @@ import {
 
 function HRDashboard({ user }) {
   const [sections, setSections] = useState(getSections());
-  const [page, setPage] = useState("home");
+
+  // Top-level nav: "home" is the full-width overview (no sidebar),
+  // "policies" brings back the role tabs + section sidebar.
+  const [view, setView] = useState("home");
+  const [homePage, setHomePage] = useState("overview"); // "overview" | "incident"
+
+  const [page, setPage] = useState(null); // "editor" | "overall" | "generate" | "customQuestionnaire" | "upload"
   const [selectedSection, setSelectedSection] = useState(null);
   const [selectedRole, setSelectedRole] = useState(null);
   const [pending, setPending] = useState(null);
@@ -27,29 +33,38 @@ function HRDashboard({ user }) {
     setSections(getSections());
   }
 
+  function goToPolicies() {
+    setView("policies");
+  }
+
   function handleSelectSection(section) {
     setSelectedSection(section);
     setPage("editor");
+    goToPolicies();
   }
 
   function handleSelectPending(role, sectionType) {
     setPending({ role, sectionType });
     setPage("generate");
+    goToPolicies();
   }
 
   function handleSelectOverall(role) {
     setSelectedRole(role);
     setPage("overall");
+    goToPolicies();
   }
 
   function handleAddCustomSection(role) {
     setCustomSectionRole(role);
     setPage("customQuestionnaire");
+    goToPolicies();
   }
 
   function handleAddUpload(role) {
     setUploadRole(role);
     setPage("upload");
+    goToPolicies();
   }
 
   function handleSectionCreated(section) {
@@ -105,117 +120,151 @@ function HRDashboard({ user }) {
       : null;
 
   return (
-    <div className="dashboard">
-      <Sidebar
-        sections={sections}
-        selectedKey={selectedKey}
-        onSelectSection={handleSelectSection}
-        onSelectPending={handleSelectPending}
-        onSelectOverall={handleSelectOverall}
-        onAddCustomSection={handleAddCustomSection}
-        onAddUpload={handleAddUpload}
-        onHome={() => setPage("home")}
-      />
+    <div className="hr-shell">
+      <nav className="top-nav">
+        <button
+          className={
+            "top-nav-tab" + (view === "home" ? " top-nav-tab-active" : "")
+          }
+          onClick={() => {
+            setView("home");
+            setHomePage("overview");
+          }}
+        >
+          Home
+        </button>
 
-      <div className="content">
-        {page === "editor" && selectedSection ? (
-          <SectionEditor
-            section={selectedSection}
-            onUpdated={handleSectionUpdated}
-          />
-        ) : page === "overall" && selectedRole ? (
-          <PolicyOverall
-            role={selectedRole}
+        <button
+          className={
+            "top-nav-tab" +
+            (view === "policies" ? " top-nav-tab-active" : "")
+          }
+          onClick={() => setView("policies")}
+        >
+          Policies
+        </button>
+      </nav>
+
+      <div className="dashboard">
+        {view === "policies" && (
+          <Sidebar
             sections={sections}
+            selectedKey={selectedKey}
+            onSelectSection={handleSelectSection}
+            onSelectPending={handleSelectPending}
+            onSelectOverall={handleSelectOverall}
+            onAddCustomSection={handleAddCustomSection}
+            onAddUpload={handleAddUpload}
           />
-        ) : page === "generate" && pending ? (
-          <SectionGenerate
-            role={pending.role}
-            sectionType={pending.sectionType}
-            onSectionCreated={handleSectionCreated}
-          />
-        ) : page === "customQuestionnaire" && customSectionRole ? (
-          <CustomSectionForm
-            role={customSectionRole}
-            onSectionCreated={handleSectionCreated}
-          />
-        ) : page === "upload" && uploadRole ? (
-          <UploadPolicyForm
-            role={uploadRole}
-            onSectionCreated={handleSectionCreated}
-          />
-        ) : page === "incident" ? (
-          <IncidentReport />
-        ) : (
-          <>
-            <h1>HR Dashboard</h1>
-            <p>Welcome {user}</p>
-
-            <section className="dashboard-section team-section">
-              <div className="section-header">
-                <h2>Policy Signing Status</h2>
-
-                <p>
-                  View who has signed their assigned policies
-                  and which team they belong to.
-                </p>
-              </div>
-
-              <div className="team-list">
-                <div className="team-row team-header">
-                  <span>Employee</span>
-                  <span>Team</span>
-                  <span>Role</span>
-                  <span>Status</span>
-                </div>
-
-                {teamMembers.map((member) => {
-                  const manager = member.managerId
-                    ? getMockManager(member.managerId)
-                    : null;
-
-                  const status = getEmployeeStatus(member.id);
-
-                  return (
-                    <div
-                      className="team-row"
-                      key={member.id}
-                    >
-                      <span>{member.name}</span>
-
-                      <span>
-                        {manager
-                          ? `${manager.name}'s Team`
-                          : "No Team"}
-                      </span>
-
-                      <span>{member.role}</span>
-
-                      <span className={status.className}>
-                        {status.text}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-            <section className="dashboard-section incident-section">
-              <h2>Incident Report</h2>
-
-              <p>
-                Create a report about an incident and get suggested
-                next steps.
-              </p>
-
-              <button
-                className="incident-report-button"
-                onClick={() => setPage("incident")}
-              >
-                🚨 Incident Report
-              </button>
-            </section>
-          </>
         )}
+
+        <div className="content">
+          {view === "home" ? (
+            homePage === "incident" ? (
+              <IncidentReport />
+            ) : (
+              <>
+                <h1>HR Dashboard</h1>
+                <p>Welcome {user}</p>
+
+                <section className="dashboard-section team-section">
+                  <div className="section-header">
+                    <h2>Policy Signing Status</h2>
+
+                    <p>
+                      View who has signed their assigned policies
+                      and which team they belong to.
+                    </p>
+                  </div>
+
+                  <div className="team-list">
+                    <div className="team-row team-header">
+                      <span>Employee</span>
+                      <span>Team</span>
+                      <span>Role</span>
+                      <span>Status</span>
+                    </div>
+
+                    {teamMembers.map((member) => {
+                      const manager = member.managerId
+                        ? getMockManager(member.managerId)
+                        : null;
+
+                      const status = getEmployeeStatus(member.id);
+
+                      return (
+                        <div
+                          className="team-row"
+                          key={member.id}
+                        >
+                          <span>{member.name}</span>
+
+                          <span>
+                            {manager
+                              ? `${manager.name}'s Team`
+                              : "No Team"}
+                          </span>
+
+                          <span>{member.role}</span>
+
+                          <span className={status.className}>
+                            {status.text}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                <section className="dashboard-section incident-section">
+                  <h2>Incident Report</h2>
+
+                  <p>
+                    Create a report about an incident and get suggested
+                    next steps.
+                  </p>
+
+                  <button
+                    className="incident-report-button"
+                    onClick={() => setHomePage("incident")}
+                  >
+                    Incident Report
+                  </button>
+                </section>
+              </>
+            )
+          ) : page === "editor" && selectedSection ? (
+            <SectionEditor
+              section={selectedSection}
+              onUpdated={handleSectionUpdated}
+            />
+          ) : page === "overall" && selectedRole ? (
+            <PolicyOverall
+              role={selectedRole}
+              sections={sections}
+            />
+          ) : page === "generate" && pending ? (
+            <SectionGenerate
+              role={pending.role}
+              sectionType={pending.sectionType}
+              onSectionCreated={handleSectionCreated}
+            />
+          ) : page === "customQuestionnaire" && customSectionRole ? (
+            <CustomSectionForm
+              role={customSectionRole}
+              onSectionCreated={handleSectionCreated}
+            />
+          ) : page === "upload" && uploadRole ? (
+            <UploadPolicyForm
+              role={uploadRole}
+              onSectionCreated={handleSectionCreated}
+            />
+          ) : (
+            <p className="sidebar-empty">
+              Select a role and policy from the sidebar to get started.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

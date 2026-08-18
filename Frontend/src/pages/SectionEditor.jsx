@@ -1,35 +1,41 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Highlighter from "../components/ai/Highlighter";
 import AIResponsePanel from "../components/ai/AIResponsePanel";
 import PolicyHistoryPanel from "../components/PolicyHistoryPanel";
 import CitationsPanel from "../components/CitationsPanel";
 import { saveSection, restoreSectionVersion } from "../data/store";
 import { SECTION_TEMPLATES } from "../data/policyTemplates";
 
-// Edits one section of one role's policy. Uses a <textarea>, not
-// rendered text, so it can't use the Highlighter component
-// (window.getSelection doesn't see into form inputs). Instead it
-// tracks selectionStart/selectionEnd directly.
+// Edits one section of one role's policy. The body is a contentEditable
+// surface (not a <textarea>) wrapped in Highlighter, so selecting text
+// uses a real window.getSelection() listener — the same select-to-ask/
+// reword interaction PolicyViewer uses for employees reading a signed
+// policy. contentEditable is uncontrolled: content is only pushed into
+// the DOM when switching sections, never on every keystroke, or the
+// cursor would jump to the start on each render.
 
 function SectionEditor({ section, onUpdated }) {
   const [content, setContent] = useState(section.content);
-  const [selection, setSelection] = useState({ text: "", start: 0, end: 0 });
+  const [highlightedText, setHighlightedText] = useState("");
   // Only one side panel can be open at a time — opening one closes any other.
   const [activePanel, setActivePanel] = useState(null); // null | "ask" | "reword" | "history" | "citations"
   const [savedNote, setSavedNote] = useState(false);
   const [currentSection, setCurrentSection] = useState(section);
-  const textareaRef = useRef(null);
+  const editableRef = useRef(null);
   const template = SECTION_TEMPLATES[section.sectionType];
   const citations = template?.citations || [];
 
-  function handleSelect() {
-    const el = textareaRef.current;
-    if (!el) return;
+  useEffect(() => {
+    setContent(section.content);
+    setCurrentSection(section);
+    if (editableRef.current) {
+      editableRef.current.innerText = section.content;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section.id]);
 
-    setSelection({
-      text: el.value.slice(el.selectionStart, el.selectionEnd),
-      start: el.selectionStart,
-      end: el.selectionEnd,
-    });
+  function handleInput() {
+    setContent(editableRef.current.innerText);
   }
 
   function handleSave() {
@@ -42,9 +48,9 @@ function SectionEditor({ section, onUpdated }) {
   }
 
   function handleApplyReword(newText) {
-    setContent(
-      (prev) => prev.slice(0, selection.start) + newText + prev.slice(selection.end)
-    );
+    const next = content.replace(highlightedText, newText);
+    setContent(next);
+    if (editableRef.current) editableRef.current.innerText = next;
     setActivePanel(null);
   }
 
@@ -53,6 +59,7 @@ function SectionEditor({ section, onUpdated }) {
     if (!restored) return;
     setCurrentSection(restored);
     setContent(restored.content);
+    if (editableRef.current) editableRef.current.innerText = restored.content;
     onUpdated(restored);
     setActivePanel(null);
   }
@@ -62,25 +69,27 @@ function SectionEditor({ section, onUpdated }) {
       <h1>{section.title}</h1>
       <p className="editor-hint">
         {section.role} section · {currentSection.tone || "Professional"} tone · Highlight text
-        below, then ask AI about it or have AI reword it.
+        below to ask AI about it or have AI reword it.
       </p>
 
-      <textarea
-        ref={textareaRef}
-        className="policy-editor-textarea"
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        onSelect={handleSelect}
-      />
-
-      <div className="ai-selection-actions">
-        <button disabled={!selection.text} onClick={() => setActivePanel("ask")}>
-          Ask AI about selection
-        </button>
-        <button disabled={!selection.text} onClick={() => setActivePanel("reword")}>
-          Reword selection
-        </button>
-      </div>
+      <Highlighter
+        onAskAI={(text) => {
+          setHighlightedText(text);
+          setActivePanel("ask");
+        }}
+        onReword={(text) => {
+          setHighlightedText(text);
+          setActivePanel("reword");
+        }}
+      >
+        <div
+          ref={editableRef}
+          className="policy-editor-textarea"
+          contentEditable
+          suppressContentEditableWarning
+          onInput={handleInput}
+        />
+      </Highlighter>
 
       <div className="policy-editor-actions">
         <button className="save-button" onClick={handleSave}>
@@ -106,8 +115,8 @@ function SectionEditor({ section, onUpdated }) {
       {(activePanel === "ask" || activePanel === "reword") && (
         <AIResponsePanel
           mode={activePanel}
-          highlightedText={selection.text}
-          allowApply
+          highlightedText={highlightedText}
+          allowApply={activePanel === "reword"}
           onClose={() => setActivePanel(null)}
           onApplyReword={handleApplyReword}
         />

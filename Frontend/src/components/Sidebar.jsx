@@ -14,25 +14,11 @@ function Sidebar({
   onSelectOverall,
   onAddCustomSection,
   onAddUpload,
-  onHome,
 }) {
   const roles = getAllRoles();
-  const [expanded, setExpanded] = useState(
-    () => new Set(roles.map((r) => r.id))
-  );
+  const [activeRole, setActiveRole] = useState(roles[0]?.id ?? null);
+  const [addingRole, setAddingRole] = useState(false);
   const [newRoleInput, setNewRoleInput] = useState("");
-  const [, forceUpdate] = useState(0);
-
-  function toggle(roleId) {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-
-      if (next.has(roleId)) next.delete(roleId);
-      else next.add(roleId);
-
-      return next;
-    });
-  }
 
   function handleAddRole(e) {
     e.preventDefault();
@@ -41,169 +27,174 @@ function Sidebar({
 
     if (id) {
       setNewRoleInput("");
-      setExpanded((prev) => new Set(prev).add(id));
-      forceUpdate((n) => n + 1);
+      setAddingRole(false);
+      setActiveRole(id);
+      // A brand-new role has no sections yet — land on its (empty)
+      // Overall view rather than leaving the content pane on whatever
+      // was showing for the previous role.
+      onSelectOverall(id);
     }
   }
+
+  const role = roles.find((r) => r.id === activeRole) || roles[0] || null;
+  const roleSections = role
+    ? sections.filter((s) => s.role === role.id)
+    : [];
+
+  const customSections = roleSections.filter(
+    (s) => s.sectionType === "custom"
+  );
+
+  const uploadedSections = roleSections.filter(
+    (s) => s.sectionType === "uploaded"
+  );
 
   return (
     <div className="sidebar">
       <h2>Policies</h2>
 
-      <button
-        className={"tab" + (selectedKey === null ? " tab-active" : "")}
-        onClick={onHome}
-      >
-        🏠 Home
-      </button>
+      <div className="role-tabs">
+        {roles.map((r) => (
+          <button
+            key={r.id}
+            className={
+              "role-tab" + (r.id === role?.id ? " role-tab-active" : "")
+            }
+            onClick={() => {
+              setActiveRole(r.id);
+              setAddingRole(false);
+            }}
+          >
+            {r.label}
+          </button>
+        ))}
 
-      <form
-        className="custom-role-form sidebar-new-role-form"
-        onSubmit={handleAddRole}
-      >
-        <input
-          placeholder="+ New role (e.g. Contractor)"
-          value={newRoleInput}
-          onChange={(e) => setNewRoleInput(e.target.value)}
-        />
-
-        <button type="submit" disabled={!newRoleInput.trim()}>
-          Add
+        <button
+          className="role-tab role-tab-add"
+          onClick={() => setAddingRole((v) => !v)}
+          aria-label="Add role"
+          aria-expanded={addingRole}
+        >
+          +
         </button>
-      </form>
+      </div>
 
-      {roles.map((role) => {
-        const isOpen = expanded.has(role.id);
+      {addingRole && (
+        <form className="role-tab-form" onSubmit={handleAddRole}>
+          <input
+            autoFocus
+            placeholder="New role name"
+            value={newRoleInput}
+            onChange={(e) => setNewRoleInput(e.target.value)}
+          />
 
-        const roleSections = sections.filter(
-          (s) => s.role === role.id
-        );
+          <button type="submit" disabled={!newRoleInput.trim()}>
+            Add
+          </button>
+        </form>
+      )}
 
-        const customSections = roleSections.filter(
-          (s) => s.sectionType === "custom"
-        );
+      {role ? (
+        <div className="role-section-list">
+          <button
+            className={
+              "tab tab-nested" +
+              (selectedKey === `overall:${role.id}` ? " tab-active" : "")
+            }
+            onClick={() => onSelectOverall(role.id)}
+          >
+            <span className="tab-label">Overall</span>
+          </button>
 
-        const uploadedSections = roleSections.filter(
-          (s) => s.sectionType === "uploaded"
-        );
+          {FIXED_SECTION_TYPES.map((type) => {
+            const template = SECTION_TEMPLATES[type];
 
-        return (
-          <div className="role-folder" key={role.id}>
+            const section = roleSections.find(
+              (s) => s.sectionType === type
+            );
+
+            const isSelected = section
+              ? selectedKey === section.id
+              : selectedKey === `pending:${role.id}:${type}`;
+
+            return (
+              <button
+                key={type}
+                className={
+                  "tab tab-nested" + (isSelected ? " tab-active" : "")
+                }
+                onClick={() =>
+                  section
+                    ? onSelectSection(section)
+                    : onSelectPending(role.id, type)
+                }
+              >
+                <span className="tab-label">{template.label}</span>
+
+                {!isSelected &&
+                  (section ? (
+                    <span
+                      className="tab-dot"
+                      aria-label="Generated"
+                    />
+                  ) : (
+                    <span className="tab-pill">Not started</span>
+                  ))}
+              </button>
+            );
+          })}
+
+          {customSections.map((section) => (
             <button
-              className="role-folder-header"
-              onClick={() => toggle(role.id)}
+              key={section.id}
+              className={
+                "tab tab-nested" +
+                (selectedKey === section.id ? " tab-active" : "")
+              }
+              onClick={() => onSelectSection(section)}
             >
-              <span className="role-folder-chevron">
-                {isOpen ? "▾" : "▸"}
-              </span>
+              <span className="tab-label">{section.title}</span>
 
-              <span className="role-folder-label">
-                {role.label}
-              </span>
-
-              <span className="role-folder-count">
-                {roleSections.length}
-              </span>
+              {selectedKey !== section.id && (
+                <span className="tab-dot" aria-label="Generated" />
+              )}
             </button>
+          ))}
 
-            {isOpen && (
-              <div className="role-folder-body">
-                <button
-                  className={
-                    "tab tab-nested" +
-                    (selectedKey === `overall:${role.id}`
-                      ? " tab-active"
-                      : "")
-                  }
-                  onClick={() => onSelectOverall(role.id)}
-                >
-                  Overall
-                </button>
+          {uploadedSections.map((section) => (
+            <button
+              key={section.id}
+              className={
+                "tab tab-nested" +
+                (selectedKey === section.id ? " tab-active" : "")
+              }
+              onClick={() => onSelectSection(section)}
+            >
+              <span className="tab-label">{section.title}</span>
 
-                {FIXED_SECTION_TYPES.map((type) => {
-                  const template = SECTION_TEMPLATES[type];
+              {selectedKey !== section.id && (
+                <span className="tab-dot" aria-label="Generated" />
+              )}
+            </button>
+          ))}
 
-                  const section = roleSections.find(
-                    (s) => s.sectionType === type
-                  );
+          <button
+            className="tab tab-nested tab-add"
+            onClick={() => onAddCustomSection(role.id)}
+          >
+            + Add custom section
+          </button>
 
-                  const isSelected = section
-                    ? selectedKey === section.id
-                    : selectedKey === `pending:${role.id}:${type}`;
-
-                  return (
-                    <button
-                      key={type}
-                      className={
-                        "tab tab-nested" +
-                        (isSelected ? " tab-active" : "") +
-                        (!section ? " tab-pending" : "")
-                      }
-                      onClick={() =>
-                        section
-                          ? onSelectSection(section)
-                          : onSelectPending(role.id, type)
-                      }
-                    >
-                      {template.label}
-
-                      {!section && (
-                        <span className="tab-status">
-                          Not started
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-
-                {customSections.map((section) => (
-                  <button
-                    key={section.id}
-                    className={
-                      "tab tab-nested" +
-                      (selectedKey === section.id
-                        ? " tab-active"
-                        : "")
-                    }
-                    onClick={() => onSelectSection(section)}
-                  >
-                    {section.title}
-                  </button>
-                ))}
-
-                {uploadedSections.map((section) => (
-                  <button
-                    key={section.id}
-                    className={
-                      "tab tab-nested" +
-                      (selectedKey === section.id
-                        ? " tab-active"
-                        : "")
-                    }
-                    onClick={() => onSelectSection(section)}
-                  >
-                    {section.title}
-                  </button>
-                ))}
-
-                <button
-                  className="tab tab-nested tab-add"
-                  onClick={() => onAddCustomSection(role.id)}
-                >
-                  + Add custom section
-                </button>
-
-                <button
-                  className="tab tab-nested tab-add"
-                  onClick={() => onAddUpload(role.id)}
-                >
-                  + Upload existing policy
-                </button>
-              </div>
-            )}
-          </div>
-        );
-      })}
+          <button
+            className="tab tab-nested tab-add"
+            onClick={() => onAddUpload(role.id)}
+          >
+            + Upload existing policy
+          </button>
+        </div>
+      ) : (
+        <p className="sidebar-empty">No roles yet. Use + to add one.</p>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import EmployeeSidebar from "../components/employee/EmployeeSidebar";
 import PolicyViewer from "./PolicyViewer";
+import IncidentReport from "./IncidentReport";
 import {
   getAssignmentsForEmployee,
   getMockTeam,
@@ -12,6 +13,7 @@ function ManagerDashboard({ user }) {
         getAssignmentsForEmployee(user)
     );
 
+    const [page, setPage] = useState("home");
     const [selectedAssignment, setSelectedAssignment] = useState(null);
     const manager = getMockManager(user);
     const teamMembers = getMockTeam(user).map((member) => {
@@ -43,6 +45,7 @@ function ManagerDashboard({ user }) {
 
   function goHome() {
     setSelectedAssignment(null);
+    setPage("home");
   }
 
   return (
@@ -60,6 +63,8 @@ function ManagerDashboard({ user }) {
             assignment={selectedAssignment}
             onSigned={handleSigned}
           />
+        ) : page === "incident" ? (
+          <IncidentReport />
         ) : (
           <>
             <h1>Manager Dashboard</h1>
@@ -111,7 +116,7 @@ function ManagerDashboard({ user }) {
 
               <button
                 className="incident-report-button"
-                onClick={() => {}}
+                onClick={() => setPage("incident")}
               >
                 Incident Report
               </button>
