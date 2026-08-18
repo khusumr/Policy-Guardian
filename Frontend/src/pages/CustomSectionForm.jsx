@@ -20,8 +20,8 @@ function CustomSectionForm({ role, onSectionCreated }) {
 
   return (
     <div className="questionnaire-page">
-      <h1>New Custom Section</h1>
-      <p className="editor-hint">{roleLabel(role)}</p>
+      <h2 style={{ margin: "0 0 6px", fontSize: 30 }}>New Custom Section</h2>
+      <p style={{ fontSize: 13, color: "var(--color-text-muted)", margin: "0 0 28px" }}>{roleLabel(role)}</p>
       <QuestionnaireForm fields={template.fields} initialTitle="" onGenerate={handleGenerate} />
     </div>
   );

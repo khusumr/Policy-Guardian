@@ -5,6 +5,7 @@ import {
   roleLabel,
   getMockManager,
 } from "../Data/store";
+import Button from "../components/ui/Button";
 
 // Shows every section for a role stitched into one document.
 // HR can select specific people and send the policy to them.
@@ -83,13 +84,13 @@ function PolicyOverall({ role, sections }) {
           ) : (
             <>
               <div className="recipient-actions">
-                <button onClick={selectAll}>
+                <Button variant="secondary" size="sm" onClick={selectAll}>
                   Select All
-                </button>
+                </Button>
 
-                <button onClick={clearAll}>
+                <Button variant="secondary" size="sm" onClick={clearAll}>
                   Clear
-                </button>
+                </Button>
               </div>
 
               <div className="recipient-list">
@@ -131,13 +132,13 @@ function PolicyOverall({ role, sections }) {
                 selected
               </p>
 
-              <button
-                className="send-button"
+              <Button
+                variant="primary"
                 onClick={handleSend}
                 disabled={selectedRecipients.length === 0}
               >
                 Send Policy
-              </button>
+              </Button>
             </>
           )}
 

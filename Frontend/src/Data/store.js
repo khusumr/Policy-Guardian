@@ -357,6 +357,22 @@ export function getAssignmentStatsForRole(role) {
   };
 }
 
+// ----- Appearance preferences -----
+// Per-person, not per-company — see Settings.
+
+const PREFS_KEY = "app_prefs";
+
+export const DEFAULT_PREFS = { theme: "light", typeface: "sans", textSize: "md" };
+
+export function getPrefs() {
+  return { ...DEFAULT_PREFS, ...read(PREFS_KEY, {}) };
+}
+
+export function savePrefs(prefs) {
+  write(PREFS_KEY, prefs);
+  return prefs;
+}
+
 export function signAssignment(assignmentId) {
   const assignments = getAssignments();
 

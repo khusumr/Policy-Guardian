@@ -1,5 +1,6 @@
 import { useState } from "react";
 import QuestionnaireForm from "../components/hr/QuestionnaireForm";
+import Button from "../components/ui/Button";
 import { SECTION_TEMPLATES } from "../Data/policyTemplates";
 import { createSection, roleLabel } from "../Data/store";
 
@@ -56,9 +57,9 @@ function SectionGenerate({ role, sectionType, onSectionCreated }) {
 
   return (
     <div className="questionnaire-page">
-      <h1>{template.label}</h1>
+      <h2 style={{ margin: "0 0 6px", fontSize: 30 }}>{template.label}</h2>
 
-      <p className="editor-hint">
+      <p style={{ fontSize: 13, color: "var(--color-text-muted)", margin: "0 0 28px" }}>
         {roleLabel(role)}
         {template.description ? ` · ${template.description}` : ""}
       </p>
@@ -69,12 +70,9 @@ function SectionGenerate({ role, sectionType, onSectionCreated }) {
             This section hasn't been created for the {roleLabel(role)} role yet.
           </p>
 
-          <button
-            className="questionnaire-button"
-            onClick={() => setShowForm(true)}
-          >
+          <Button variant="primary" onClick={() => setShowForm(true)}>
             Start Questionnaire
-          </button>
+          </Button>
         </>
       ) : (
         <QuestionnaireForm

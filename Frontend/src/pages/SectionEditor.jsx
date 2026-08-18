@@ -1,7 +1,8 @@
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import AIResponsePanel from "../components/ai/AIResponsePanel";
 import PolicyHistoryPanel from "../components/PolicyHistoryPanel";
 import CitationsPanel from "../components/CitationsPanel";
+import Button from "../components/ui/Button";
 import { saveSection, restoreSectionVersion } from "../Data/store";
 import { SECTION_TEMPLATES } from "../Data/policyTemplates";
 
@@ -58,11 +59,22 @@ function SectionEditor({ section, onUpdated }) {
   }
 
   return (
-    <div className="policy-editor">
-      <h1>{section.title}</h1>
+    <Fragment>
+      <div className="nav editor-header-bar">
+        <div className="nav-brand" style={{ fontSize: 19 }}>
+          {section.title}
+          <span className="nav-brand-sub" style={{ textTransform: "none", letterSpacing: 0 }}>
+            {currentSection.tone || "Professional"} tone · draft
+          </span>
+        </div>
+        <Button variant="secondary" size="sm" onClick={handleSave}>
+          Save draft
+        </Button>
+      </div>
+
+      <div className="policy-editor">
       <p className="editor-hint">
-        {section.role} section · {currentSection.tone || "Professional"} tone · Highlight text
-        below, then ask AI about it or have AI reword it.
+        {section.role} section · Highlight text below, then ask AI about it or have AI reword it.
       </p>
 
       <textarea
@@ -74,25 +86,25 @@ function SectionEditor({ section, onUpdated }) {
       />
 
       <div className="ai-selection-actions">
-        <button disabled={!selection.text} onClick={() => setActivePanel("ask")}>
+        <Button variant="secondary" size="sm" disabled={!selection.text} onClick={() => setActivePanel("ask")}>
           Ask AI about selection
-        </button>
-        <button disabled={!selection.text} onClick={() => setActivePanel("reword")}>
+        </Button>
+        <Button variant="secondary" size="sm" disabled={!selection.text} onClick={() => setActivePanel("reword")}>
           Reword selection
-        </button>
+        </Button>
       </div>
 
       <div className="policy-editor-actions">
-        <button className="save-button" onClick={handleSave}>
+        <Button variant="primary" onClick={handleSave}>
           Save
-        </button>
-        <button className="history-button" onClick={() => setActivePanel("history")}>
+        </Button>
+        <Button variant="secondary" onClick={() => setActivePanel("history")}>
           History{(currentSection.history || []).length > 0 && ` (${currentSection.history.length})`}
-        </button>
+        </Button>
         {citations.length > 0 && (
-          <button className="history-button" onClick={() => setActivePanel("citations")}>
+          <Button variant="secondary" onClick={() => setActivePanel("citations")}>
             Citations ({citations.length})
-          </button>
+          </Button>
         )}
       </div>
 
@@ -128,7 +140,8 @@ function SectionEditor({ section, onUpdated }) {
           onClose={() => setActivePanel(null)}
         />
       )}
-    </div>
+      </div>
+    </Fragment>
   );
 }
 
