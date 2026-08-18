@@ -2,19 +2,7 @@
 // (not a regenerated version — see PolicyRequest.content on the backend)
 // and downloads it as a PDF or DOCX.
 
-const BACKEND_URL = "https://app-ai-policy-backend.azurewebsites.net";
-const ORG_ID = "bug-busters";
-
-// Frontend sectionType -> backend PolicyType enum value.
-const POLICY_TYPE_MAP = {
-  work_from_home: "Work From Home",
-  pto: "Paid Time Off",
-  code_of_conduct: "Code of Conduct",
-  expenses: "Expense Reimbursement",
-  security: "Security Policy",
-  custom: "Custom Section",
-  uploaded: "Custom Section",
-};
+import { BACKEND_URL, ORG_ID, POLICY_TYPE_MAP } from "./backendConfig";
 
 async function saveSectionToBackend(section) {
   const requirements = Object.values(section.answers || {}).filter(Boolean);

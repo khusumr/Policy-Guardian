@@ -365,3 +365,64 @@ def test_export_docx_policy_not_found(mock_get_policy):
     assert response.json() == {
         "detail": "Policy not found"
     }
+
+
+# --------------------------------------------------
+# Policy Upload — POST /policies/{org_id}/upload
+# --------------------------------------------------
+
+@patch("main.create_policy")
+def test_upload_policy_txt_extracts_and_saves(mock_create):
+    mock_create.side_effect = lambda org_id, policy: policy
+
+    response = client.post(
+        "/policies/test-org/upload",
+        data={
+            "company_name": "Quadrant Technologies",
+            "policy_type": "Custom Section",
+        },
+        files={
+            "file": ("handbook.txt", b"Employees may work remotely twice per week.", "text/plain"),
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["content"] == "Employees may work remotely twice per week."
+    assert data["source"] == "uploaded"
+    assert data["original_filename"] == "handbook.txt"
+    mock_create.assert_called_once()
+
+
+def test_upload_policy_unsupported_file_type():
+    response = client.post(
+        "/policies/test-org/upload",
+        data={
+            "company_name": "Quadrant Technologies",
+            "policy_type": "Custom Section",
+        },
+        files={
+            "file": ("handbook.exe", b"not a real policy", "application/octet-stream"),
+        },
+    )
+
+    assert response.status_code == 400
+    assert "Unsupported file type" in response.json()["detail"]
+
+
+def test_upload_policy_empty_file():
+    response = client.post(
+        "/policies/test-org/upload",
+        data={
+            "company_name": "Quadrant Technologies",
+            "policy_type": "Custom Section",
+        },
+        files={
+            "file": ("empty.txt", b"   ", "text/plain"),
+        },
+    )
+
+    assert response.status_code == 400
+    assert "Could not extract any text" in response.json()["detail"]
