@@ -2,21 +2,33 @@
 // (not a regenerated version — see PolicyRequest.content on the backend)
 // and downloads it as a PDF or DOCX.
 
-const BACKEND_URL = "https://app-ai-policy-backend.azurewebsites.net";
-const ORG_ID = "bug-busters";
+import { BACKEND_URL, ORG_ID, POLICY_TYPE_MAP } from "./backendConfig";
 
-// Frontend sectionType -> backend PolicyType enum value.
-const POLICY_TYPE_MAP = {
-  work_from_home: "Work From Home",
-  pto: "Paid Time Off",
-  code_of_conduct: "Code of Conduct",
-  expenses: "Expense Reimbursement",
-  security: "Security Policy",
-  custom: "Custom Section",
-  uploaded: "Custom Section",
-};
-
+// If this section has already been saved to the backend once (has a
+// backendPolicyId), PATCH it instead of POSTing a new record each time —
+// that's what actually builds real version history via GET .../history,
+// instead of leaving a trail of disconnected one-off saves.
 async function saveSectionToBackend(section) {
+  if (section.backendPolicyId) {
+    const response = await fetch(
+      `${BACKEND_URL}/policies/${ORG_ID}/${section.backendPolicyId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: section.content,
+          edited_by: "HR",
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to update saved policy (${response.status})`);
+    }
+
+    return response.json();
+  }
+
   const requirements = Object.values(section.answers || {}).filter(Boolean);
   if (requirements.length === 0) {
     requirements.push(section.title || "Policy");
@@ -36,6 +48,16 @@ async function saveSectionToBackend(section) {
 
   if (!response.ok) {
     throw new Error(`Failed to save policy for export (${response.status})`);
+  }
+
+  return response.json();
+}
+
+export async function getPolicyHistory(policyId) {
+  const response = await fetch(`${BACKEND_URL}/policies/${ORG_ID}/${policyId}/history`);
+
+  if (!response.ok) {
+    throw new Error(`Failed to load version history (${response.status})`);
   }
 
   return response.json();
@@ -69,4 +91,6 @@ export async function exportSection(section, format) {
     `${BACKEND_URL}/policies/${ORG_ID}/${saved.id}/export/${format}`,
     filename
   );
+
+  return saved;
 }
