@@ -67,6 +67,20 @@ export async function rewordText(instruction, highlightedText) {
 
 
 // --------------------------------------------------
+// Ask the Policy Agent (Intern dashboard)
+// --------------------------------------------------
+
+export async function askPolicyAgent(question) {
+  await delay(650);
+
+  return {
+    text: `Placeholder answer for "${trim(question, 80)}" — connect a real policy AI backend to ground this in your actual signed policies.`,
+    citation: null,
+  };
+}
+
+
+// --------------------------------------------------
 // Incident Report AI
 // --------------------------------------------------
 

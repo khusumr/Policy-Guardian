@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { createSection, roleLabel } from "../Data/store";
+import { Field, Input } from "../components/ui/FormControls";
+import Button from "../components/ui/Button";
 
 // Lets HR bring an existing policy document into the app as a normal
 // section, so it gets the same editor, AI features (ask/reword), and
@@ -52,35 +54,32 @@ function UploadPolicyForm({ role, onSectionCreated }) {
         editor alongside generated sections.
       </p>
 
-      <form className="questionnaire-form" onSubmit={handleSubmit}>
-        <div className="questionnaire-field">
-          <label>File</label>
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 600 }}>
+        <Field label="File">
           <input type="file" accept=".txt,.md,text/plain" onChange={handleFileChange} />
-        </div>
+        </Field>
 
         {error && <p className="ai-suggestion-note">{error}</p>}
 
         {content && (
           <>
-            <div className="questionnaire-field">
-              <label>Section title</label>
-              <input
+            <Field label="Section title">
+              <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Existing Remote Work Policy"
               />
-            </div>
+            </Field>
 
-            <div className="questionnaire-field">
-              <label>Preview</label>
+            <Field label="Preview">
               <p className="upload-preview">{content}</p>
-            </div>
+            </Field>
           </>
         )}
 
-        <button className="questionnaire-button" type="submit" disabled={!content}>
+        <Button variant="primary" type="submit" disabled={!content} style={{ alignSelf: "flex-start" }}>
           Add to Policies
-        </button>
+        </Button>
       </form>
     </div>
   );

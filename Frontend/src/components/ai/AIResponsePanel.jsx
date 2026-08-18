@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { askAIAboutText, rewordText } from "../../Data/aiMock";
+import { Input } from "../ui/FormControls";
+import Button from "../ui/Button";
 
 // allowApply controls whether a "reword" response can be applied back
 // into the source document. HR's editor passes allowApply — employees
@@ -43,7 +45,7 @@ function AIResponsePanel({
       <div className="ai-panel-quote">"{highlightedText}"</div>
 
       <form onSubmit={handleSubmit} className="ai-panel-form">
-        <input
+        <Input
           placeholder={
             mode === "ask"
               ? "Ask a question about this text..."
@@ -52,7 +54,9 @@ function AIResponsePanel({
           value={input}
           onChange={(e) => setInput(e.target.value)}
         />
-        <button disabled={loading}>{loading ? "Thinking..." : "Submit"}</button>
+        <Button variant="primary" disabled={loading}>
+          {loading ? "Thinking..." : "Submit"}
+        </Button>
       </form>
 
       {response && (
@@ -60,12 +64,9 @@ function AIResponsePanel({
           <p>{response}</p>
 
           {mode === "reword" && allowApply && (
-            <button
-              className="ai-apply-button"
-              onClick={() => onApplyReword(response)}
-            >
+            <Button variant="primary" size="sm" onClick={() => onApplyReword(response)}>
               Apply to Policy
-            </button>
+            </Button>
           )}
 
           {mode === "reword" && !allowApply && (

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Button from "./ui/Button";
 
 // Slide-out panel listing a section's past versions (most recent
 // first), each restorable back into the editor. Reuses the .ai-panel
@@ -56,12 +57,9 @@ function PolicyHistoryPanel({ section, onClose, onRestore }) {
                 {isOpen && (
                   <>
                     <p className="history-entry-preview">{entry.content}</p>
-                    <button
-                      className="ai-apply-button"
-                      onClick={() => onRestore(index)}
-                    >
+                    <Button variant="primary" size="sm" onClick={() => onRestore(index)}>
                       Restore this version
-                    </button>
+                    </Button>
                   </>
                 )}
               </div>

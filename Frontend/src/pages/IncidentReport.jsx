@@ -4,6 +4,8 @@ import {
   summarizeIncident,
   suggestIncidentNextSteps,
 } from "../Data/aiMock";
+import { Input } from "../components/ui/FormControls";
+import Button from "../components/ui/Button";
 
 // A private, unshared chat for a manager or HR person to talk through
 // an incident, then generate a summary + suggested next steps. Nothing
@@ -78,23 +80,25 @@ function IncidentReport() {
             <div ref={chatEndRef} />
           </div>
 
-          <form className="ai-panel-form" onSubmit={handleSend}>
-            <input
+          <form onSubmit={handleSend} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <Input
               placeholder="Describe what happened..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
             />
-            <button disabled={sending}>{sending ? "Sending..." : "Send"}</button>
+            <Button variant="primary" disabled={sending}>
+              {sending ? "Sending..." : "Send"}
+            </Button>
           </form>
 
           <div className="incident-actions">
-            <button
-              className="questionnaire-button"
+            <Button
+              variant="primary"
               onClick={handleGenerate}
               disabled={userMessageCount === 0 || generating}
             >
               {generating ? "Generating..." : "Generate Summary Report"}
-            </button>
+            </Button>
             {(messages.length > 0 || summary) && (
               <button className="link-button" onClick={handleReset}>
                 Start over
