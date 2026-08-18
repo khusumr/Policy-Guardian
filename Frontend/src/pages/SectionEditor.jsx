@@ -5,6 +5,7 @@ import CitationsPanel from "../components/CitationsPanel";
 import Button from "../components/ui/Button";
 import { saveSection, restoreSectionVersion } from "../Data/store";
 import { SECTION_TEMPLATES } from "../Data/policyTemplates";
+import { exportSection } from "../Data/policyExport";
 
 // Edits one section of one role's policy. Uses a <textarea>, not
 // rendered text, so it can't use the Highlighter component
@@ -18,6 +19,7 @@ function SectionEditor({ section, onUpdated }) {
   const [activePanel, setActivePanel] = useState(null); // null | "ask" | "reword" | "history" | "citations"
   const [savedNote, setSavedNote] = useState(false);
   const [currentSection, setCurrentSection] = useState(section);
+  const [exporting, setExporting] = useState(null); // null | "pdf" | "docx"
   const textareaRef = useRef(null);
   const template = SECTION_TEMPLATES[section.sectionType];
   const citations = template?.citations || [];
@@ -56,6 +58,21 @@ function SectionEditor({ section, onUpdated }) {
     setContent(restored.content);
     onUpdated(restored);
     setActivePanel(null);
+  }
+
+  async function handleExport(format) {
+    if (exporting) return;
+
+    setExporting(format);
+    try {
+      // Export exactly what's on screen, including unsaved edits.
+      await exportSection({ ...currentSection, content }, format);
+    } catch (err) {
+      console.error(err);
+      alert(`Failed to export as ${format.toUpperCase()}. Please try again.`);
+    } finally {
+      setExporting(null);
+    }
   }
 
   return (
@@ -106,6 +123,12 @@ function SectionEditor({ section, onUpdated }) {
             Citations ({citations.length})
           </Button>
         )}
+        <Button variant="secondary" disabled={!!exporting} onClick={() => handleExport("pdf")}>
+          {exporting === "pdf" ? "Exporting…" : "Download PDF"}
+        </Button>
+        <Button variant="secondary" disabled={!!exporting} onClick={() => handleExport("docx")}>
+          {exporting === "docx" ? "Exporting…" : "Download DOCX"}
+        </Button>
       </div>
 
       {savedNote && <p className="sent-confirmation">Saved.</p>}
