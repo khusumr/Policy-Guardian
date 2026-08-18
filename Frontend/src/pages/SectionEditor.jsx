@@ -2,7 +2,6 @@ import { Fragment, useRef, useState } from "react";
 import AIResponsePanel from "../components/ai/AIResponsePanel";
 import PolicyHistoryPanel from "../components/PolicyHistoryPanel";
 import CitationsPanel from "../components/CitationsPanel";
-import BackendHistoryPanel from "../components/BackendHistoryPanel";
 import Button from "../components/ui/Button";
 import { saveSection, restoreSectionVersion } from "../Data/store";
 import { SECTION_TEMPLATES } from "../Data/policyTemplates";
@@ -135,11 +134,6 @@ function SectionEditor({ section, onUpdated }) {
         <Button variant="secondary" disabled={!!exporting} onClick={() => handleExport("docx")}>
           {exporting === "docx" ? "Exporting…" : "Download DOCX"}
         </Button>
-        {currentSection.backendPolicyId && (
-          <Button variant="secondary" onClick={() => setActivePanel("backendHistory")}>
-            Backend History
-          </Button>
-        )}
       </div>
 
       {savedNote && <p className="sent-confirmation">Saved.</p>}
@@ -175,12 +169,6 @@ function SectionEditor({ section, onUpdated }) {
         />
       )}
 
-      {activePanel === "backendHistory" && currentSection.backendPolicyId && (
-        <BackendHistoryPanel
-          policyId={currentSection.backendPolicyId}
-          onClose={() => setActivePanel(null)}
-        />
-      )}
       </div>
     </Fragment>
   );

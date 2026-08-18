@@ -11,7 +11,7 @@ function sectionAnchorId(sectionId) {
 }
 
 function PolicyViewer({ assignment, onSigned }) {
-  const [aiMode, setAiMode] = useState(null); // null | "ask" | "reword"
+  const [aiMode, setAiMode] = useState(null); // null | "ask"
   const [highlightedText, setHighlightedText] = useState("");
 
   function handleSign() {
@@ -60,10 +60,6 @@ function PolicyViewer({ assignment, onSigned }) {
         onAskAI={(text) => {
           setHighlightedText(text);
           setAiMode("ask");
-        }}
-        onReword={(text) => {
-          setHighlightedText(text);
-          setAiMode("reword");
         }}
       >
         {assignment.parts.map((part) => (

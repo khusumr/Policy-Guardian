@@ -1,23 +1,31 @@
 import { useState } from "react";
-import { getAllRoles, getSections, getAssignments, getExpirationInfo, roleLabel } from "../Data/store";
+import { getAllRoles, getSections, getAssignments, getExpirationInfo, roleLabel, addRole } from "../Data/store";
 import { Input } from "../components/ui/FormControls";
+import Button from "../components/ui/Button";
 import Tag from "../components/ui/Tag";
 
 // The Policies tab's landing view — an overview across every role that
-// has at least one section, with a text search across section content.
-// The mockup's version also has an audience-filter sidebar and a peer-
-// benchmark blurb; the sidebar's job is already done by the existing
-// role/section Sidebar next to this content, and there's no peer data
-// source to draw a real benchmark from, so this sticks to what the
-// store actually knows.
+// has at least one section, with a text search across section content,
+// an audience filter, and a "New policy" shortcut into the sidebar's
+// role-creation flow.
+//
+// The mockup also has a "Filters" button and a peer-benchmark blurb.
+// "Filters" duplicates the audience chips below with no clear extra
+// behavior of its own, and there's no peer data source to draw a real
+// benchmark from — fabricating one would be worse than leaving it out —
+// so both stay out until there's something real to back them.
 function PolicyLibrary({ onOpenRole }) {
   const [query, setQuery] = useState("");
+  const [audience, setAudience] = useState(null); // null ("Everyone") | role id
+  const [addingRole, setAddingRole] = useState(false);
+  const [newRoleName, setNewRoleName] = useState("");
 
   const allSections = getSections();
   const allAssignments = getAssignments();
   const q = query.trim().toLowerCase();
+  const roles = getAllRoles();
 
-  const rows = getAllRoles()
+  const rows = roles
     .map((role) => {
       const roleSections = allSections.filter((s) => s.role === role.id);
       if (roleSections.length === 0) return null;
@@ -30,9 +38,15 @@ function PolicyLibrary({ onOpenRole }) {
         .map((s) => ({ section: s, info: getExpirationInfo(s) }))
         .sort((a, b) => a.info.daysRemaining - b.info.daysRemaining)[0];
 
-      return { role, roleSections, coverage, soonest };
+      // A real, non-fabricated stand-in for "version": how many saved
+      // revisions this role's sections collectively have, plus the
+      // original save.
+      const version = 1 + roleSections.reduce((sum, s) => sum + (s.history || []).length, 0);
+
+      return { role, roleSections, coverage, soonest, version };
     })
     .filter(Boolean)
+    .filter((row) => !audience || row.role.id === audience)
     .filter((row) => {
       if (!q) return true;
       if (row.role.label.toLowerCase().includes(q)) return true;
@@ -41,15 +55,67 @@ function PolicyLibrary({ onOpenRole }) {
       );
     });
 
+  function handleCreateRole(e) {
+    e.preventDefault();
+    const id = addRole(newRoleName);
+    if (!id) return;
+    setNewRoleName("");
+    setAddingRole(false);
+    onOpenRole?.(id);
+  }
+
   return (
     <div>
-      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 28, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 20, flexWrap: "wrap" }}>
         <Input
           placeholder='Search policy text, e.g. "monitor allowance"'
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          style={{ maxWidth: 420 }}
+          style={{ maxWidth: 420, flex: "1 1 260px" }}
         />
+        <Button variant="primary" onClick={() => setAddingRole((v) => !v)} style={{ marginLeft: "auto" }}>
+          New policy
+        </Button>
+      </div>
+
+      {addingRole && (
+        <form
+          onSubmit={handleCreateRole}
+          style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 20 }}
+        >
+          <Input
+            autoFocus
+            placeholder="Who is this policy for? e.g. Contractor"
+            value={newRoleName}
+            onChange={(e) => setNewRoleName(e.target.value)}
+            style={{ maxWidth: 300 }}
+          />
+          <Button variant="primary" type="submit" disabled={!newRoleName.trim()}>
+            Create
+          </Button>
+          <Button variant="secondary" type="button" onClick={() => setAddingRole(false)}>
+            Cancel
+          </Button>
+        </form>
+      )}
+
+      <div style={{ marginBottom: 24 }}>
+        <div className="page-kicker" style={{ marginBottom: 8 }}>Audience</div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Button variant={audience === null ? "primary" : "secondary"} size="sm" onClick={() => setAudience(null)}>
+            Everyone
+          </Button>
+          {roles.map((role) => (
+            <Button
+              key={role.id}
+              variant={audience === role.id ? "primary" : "secondary"}
+              size="sm"
+              onClick={() => setAudience(role.id)}
+            >
+              {role.label}
+            </Button>
+          ))}
+        </div>
       </div>
 
       <h3 style={{ margin: "0 0 16px" }}>
@@ -58,26 +124,28 @@ function PolicyLibrary({ onOpenRole }) {
 
       {rows.length === 0 ? (
         <p className="sidebar-empty">
-          {q ? "No policies match that search." : "No policies yet — build one from the sidebar."}
+          {q || audience ? "No policies match that filter." : "No policies yet — build one from the sidebar."}
         </p>
       ) : (
         <table className="table">
           <thead>
             <tr>
               <th>Policy</th>
+              <th>Version</th>
               <th>Sections</th>
               <th>Expires</th>
               <th style={{ textAlign: "right" }}>Coverage</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ role, roleSections, coverage, soonest }) => (
+            {rows.map(({ role, roleSections, coverage, soonest, version }) => (
               <tr
                 key={role.id}
                 onClick={() => onOpenRole?.(role.id)}
                 style={{ cursor: onOpenRole ? "pointer" : "default" }}
               >
                 <td data-label="Policy" style={{ fontWeight: 600 }}>{roleLabel(role.id)}</td>
+                <td data-label="Version">v{version}</td>
                 <td data-label="Sections">{roleSections.length}</td>
                 <td data-label="Expires">
                   {!soonest ? (

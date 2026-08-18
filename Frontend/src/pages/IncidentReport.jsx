@@ -85,6 +85,9 @@ function IncidentReport() {
               placeholder="Describe what happened..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              autoCapitalize="sentences"
+              autoCorrect="off"
+              spellCheck="true"
             />
             <Button variant="primary" disabled={sending}>
               {sending ? "Sending..." : "Send"}

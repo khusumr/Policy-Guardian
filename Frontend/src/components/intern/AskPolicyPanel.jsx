@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { askPolicyAgent } from "../../Data/aiMock";
+import { askAIAboutText } from "../../Data/aiMock";
 import { Input } from "../ui/FormControls";
 
 // The seeded example from the design mock, shown before the user asks
@@ -9,11 +9,13 @@ const SEED_MESSAGES = [
   {
     role: "agent",
     text: "Two days a week, Tuesday excepted.",
-    citation: "Source: Work From Home v2, §2.1",
+    citation: "Source: Work From Home v2, Section 2.1",
   },
 ];
 
-function AskPolicyPanel() {
+// Grounds the question in the employee's own assigned policy text via
+// the real /ask-ai backend, instead of a canned placeholder response.
+function AskPolicyPanel({ policyContext }) {
   const [messages, setMessages] = useState(SEED_MESSAGES);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,12 +29,20 @@ function AskPolicyPanel() {
     setInput("");
     setLoading(true);
 
-    const answer = await askPolicyAgent(question);
-    setMessages((prev) => [
-      ...prev,
-      { role: "agent", text: answer.text, citation: answer.citation },
-    ]);
-    setLoading(false);
+    try {
+      const answer = await askAIAboutText(
+        question,
+        policyContext || "No policy has been assigned to this employee yet."
+      );
+      setMessages((prev) => [...prev, { role: "agent", text: answer }]);
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "agent", text: err.message || "Sorry, I couldn't reach the policy agent — please try again." },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

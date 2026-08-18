@@ -139,10 +139,6 @@ function Settings() {
             </div>
           </div>
         </div>
-
-        <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: "14px 0 0", lineHeight: 1.5 }}>
-          Dark theme lightens the purple accent to <span style={{ fontFamily: "ui-monospace, monospace" }}>#9b82ff</span> to hold contrast on the dark ground.
-        </p>
       </div>
     </div>
   );
