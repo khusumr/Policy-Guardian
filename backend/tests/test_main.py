@@ -7,6 +7,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from fastapi.testclient import TestClient
 from main import app
+from document_parser import UnsupportedFileTypeError
 
 
 client = TestClient(app)
@@ -264,6 +265,155 @@ def test_fetch_all_policies(mock_list_policies):
 
     assert len(data) == 1
     assert data[0]["company_name"] == "Quadrant Technologies"
+
+
+# --------------------------------------------------
+# Policy Upload — POST /policies/{org_id}/upload
+# --------------------------------------------------
+
+@patch("main.create_policy")
+@patch("main.extract_text_from_upload")
+def test_upload_policy_success(mock_extract, mock_create):
+    mock_extract.return_value = "Extracted policy text content."
+    mock_create.side_effect = lambda org_id, policy: policy
+
+    response = client.post(
+        "/policies/test-org/upload",
+        data={
+            "company_name": "Quadrant Technologies",
+            "policy_type": "Work From Home",
+        },
+        files={
+            "file": (
+                "existing-policy.docx",
+                b"fake docx bytes",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["content"] == "Extracted policy text content."
+    assert data["source"] == "uploaded"
+    assert data["original_filename"] == "existing-policy.docx"
+
+    mock_create.assert_called_once()
+
+
+@patch("main.extract_text_from_upload")
+def test_upload_policy_unsupported_type(mock_extract):
+    mock_extract.side_effect = UnsupportedFileTypeError(
+        "Unsupported file type for 'bad.exe'. Use .docx, .pdf, or .txt."
+    )
+
+    response = client.post(
+        "/policies/test-org/upload",
+        data={
+            "company_name": "Quadrant Technologies",
+            "policy_type": "Work From Home",
+        },
+        files={"file": ("bad.exe", b"junk", "application/octet-stream")},
+    )
+
+    assert response.status_code == 400
+    assert "Unsupported file type" in response.json()["detail"]
+
+
+@patch("main.extract_text_from_upload")
+def test_upload_policy_empty_extracted_text(mock_extract):
+    mock_extract.return_value = "   "
+
+    response = client.post(
+        "/policies/test-org/upload",
+        data={
+            "company_name": "Quadrant Technologies",
+            "policy_type": "Work From Home",
+        },
+        files={"file": ("empty.txt", b"   ", "text/plain")},
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "detail": "Could not extract any text from the uploaded file."
+    }
+
+
+# --------------------------------------------------
+# Policy Edit — PATCH /policies/{org_id}/{policy_id}
+# --------------------------------------------------
+
+@patch("main.update_policy")
+def test_edit_policy_success(mock_update):
+    mock_update.return_value = {
+        "id": "policy-1",
+        "content": "Updated policy content here",
+        "version": 2,
+    }
+
+    response = client.patch(
+        "/policies/test-org/policy-1",
+        json={"content": "Updated policy content here", "edited_by": "hr-user"},
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["version"] == 2
+
+    mock_update.assert_called_once_with(
+        "test-org",
+        "policy-1",
+        {"content": "Updated policy content here"},
+        edited_by="hr-user",
+    )
+
+
+@patch("main.update_policy")
+def test_edit_policy_not_found(mock_update):
+    mock_update.return_value = None
+
+    response = client.patch(
+        "/policies/test-org/missing-policy",
+        json={"content": "Updated policy content here"},
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": "Policy not found"
+    }
+
+
+def test_edit_policy_invalid_request():
+    response = client.patch(
+        "/policies/test-org/policy-1",
+        json={"content": "short"},
+    )
+
+    assert response.status_code == 422
+
+
+# --------------------------------------------------
+# Policy History — GET /policies/{org_id}/{policy_id}/history
+# --------------------------------------------------
+
+@patch("main.get_policy_history")
+def test_policy_history(mock_history):
+    mock_history.return_value = [
+        {"policy_id": "policy-1", "version": 1, "content": "old content"}
+    ]
+
+    response = client.get("/policies/test-org/policy-1/history")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data) == 1
+    assert data[0]["version"] == 1
 
 
 # --------------------------------------------------
