@@ -208,102 +208,106 @@ function HRDashboard({ user }) {
             {pendingReviewCount} awaiting signature.
           </p>
 
-          <div className="stat-row">
-            <div>
-              <div className="stat-value">{livePolicyRoles.size}</div>
-              <div className="stat-label">Live policies</div>
-            </div>
-            <div>
-              <div className="stat-value" style={{ color: "var(--color-accent-700)" }}>
-                {signedPercent}
-                <span style={{ fontSize: 22 }}>%</span>
-              </div>
-              <div className="stat-label">Signed</div>
-            </div>
-            <div>
-              <div className="stat-value">{pendingReviewCount}</div>
-              <div className="stat-label">Pending review</div>
-            </div>
-            <div>
-              <div className="stat-value" style={{ color: "var(--color-accent-2-700)" }}>
-                {soonestExpiring ? soonestExpiring.info.daysRemaining : "—"}
-              </div>
-              <div className="stat-label">
-                {soonestExpiring ? `Days to ${soonestExpiring.section.title} expiry` : "Days to expiry"}
-              </div>
-            </div>
-          </div>
-
-          <h3 style={{ margin: "0 0 4px" }}>Policy signing status</h3>
-          <p style={{ margin: "0 0 16px", color: "var(--color-text-muted)", fontSize: 14 }}>
-            Who has signed their assigned policies, and which team they belong to.
-          </p>
-
-          {teamMembers.length === 0 ? (
-            <p className="sidebar-empty">No employees yet.</p>
-          ) : (
-            <table className="table" style={{ maxWidth: 860 }}>
-              <thead>
-                <tr>
-                  <th>Employee</th>
-                  <th>Team</th>
-                  <th>Role</th>
-                  <th style={{ textAlign: "right" }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {teamMembers.map((member) => {
-                  const manager = member.managerId ? getMockManager(member.managerId) : null;
-                  const status = getEmployeeStatus(member.id);
-
-                  return (
-                    <tr key={member.id}>
-                      <td data-label="Employee" style={{ fontWeight: 600 }}>{member.name}</td>
-                      <td data-label="Team">{manager ? `${manager.name}'s Team` : "No Team"}</td>
-                      <td data-label="Role">{roleLabel(member.role)}</td>
-                      <td data-label="Status" style={{ textAlign: "right" }}>
-                        <Tag variant={status.variant}>{status.label}</Tag>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-
-          <div style={{ display: "flex", gap: 56, marginTop: 48, alignItems: "flex-start", flexWrap: "wrap" }}>
-            <div style={{ maxWidth: 420 }}>
-              <h3 style={{ margin: "0 0 4px" }}>Incident report</h3>
-              <p style={{ margin: "0 0 16px", color: "var(--color-text-muted)", fontSize: 14 }}>
-                Describe an incident and get suggested next steps, cited against the relevant policy.
-              </p>
-              <Button
-                variant="danger"
-                onClick={() => {
-                  setPage("incident");
-                  goToPolicies();
-                }}
-              >
-                File an incident report
-              </Button>
-            </div>
-
-            <div style={{ maxWidth: 340 }}>
-              <h3 style={{ margin: "0 0 12px" }}>Recent activity</h3>
-              {activity.length === 0 ? (
-                <p className="sidebar-empty">Nothing yet.</p>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 11, fontSize: 13 }}>
-                  {activity.map((a, i) => (
-                    <div key={i} style={{ display: "flex", gap: 12 }}>
-                      <span style={{ color: "var(--color-text-muted)", minWidth: 52 }}>
-                        {relativeTime(a.at)}
-                      </span>
-                      <span>{a.text}</span>
-                    </div>
-                  ))}
+          <div style={{ display: "flex", gap: 48, alignItems: "flex-start", flexWrap: "wrap" }}>
+            <div style={{ flex: "1 1 480px" }}>
+              <div className="stat-row">
+                <div>
+                  <div className="stat-value">{livePolicyRoles.size}</div>
+                  <div className="stat-label">Live policies</div>
                 </div>
+                <div>
+                  <div className="stat-value" style={{ color: "var(--color-accent-700)" }}>
+                    {signedPercent}
+                    <span style={{ fontSize: 22 }}>%</span>
+                  </div>
+                  <div className="stat-label">Signed</div>
+                </div>
+                <div>
+                  <div className="stat-value">{pendingReviewCount}</div>
+                  <div className="stat-label">Pending review</div>
+                </div>
+                <div>
+                  <div className="stat-value" style={{ color: "var(--color-accent-2-700)" }}>
+                    {soonestExpiring ? soonestExpiring.info.daysRemaining : "—"}
+                  </div>
+                  <div className="stat-label">
+                    {soonestExpiring ? `Days to ${soonestExpiring.section.title} expiry` : "Days to expiry"}
+                  </div>
+                </div>
+              </div>
+
+              <h3 style={{ margin: "0 0 4px" }}>Policy signing status</h3>
+              <p style={{ margin: "0 0 16px", color: "var(--color-text-muted)", fontSize: 14 }}>
+                Who has signed their assigned policies, and which team they belong to.
+              </p>
+
+              {teamMembers.length === 0 ? (
+                <p className="sidebar-empty">No employees yet.</p>
+              ) : (
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Employee</th>
+                      <th>Team</th>
+                      <th>Role</th>
+                      <th style={{ textAlign: "right" }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {teamMembers.map((member) => {
+                      const manager = member.managerId ? getMockManager(member.managerId) : null;
+                      const status = getEmployeeStatus(member.id);
+
+                      return (
+                        <tr key={member.id}>
+                          <td data-label="Employee" style={{ fontWeight: 600 }}>{member.name}</td>
+                          <td data-label="Team">{manager ? `${manager.name}'s Team` : "No Team"}</td>
+                          <td data-label="Role">{roleLabel(member.role)}</td>
+                          <td data-label="Status" style={{ textAlign: "right" }}>
+                            <Tag variant={status.variant}>{status.label}</Tag>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               )}
+            </div>
+
+            <div style={{ width: 330, display: "flex", flexDirection: "column", gap: 40 }}>
+              <div>
+                <h3 style={{ margin: "0 0 4px" }}>Incident report</h3>
+                <p style={{ margin: "0 0 16px", color: "var(--color-text-muted)", fontSize: 14 }}>
+                  Describe an incident and get suggested next steps, cited against the relevant policy.
+                </p>
+                <Button
+                  variant="danger"
+                  onClick={() => {
+                    setPage("incident");
+                    goToPolicies();
+                  }}
+                >
+                  File an incident report
+                </Button>
+              </div>
+
+              <div>
+                <h3 style={{ margin: "0 0 12px" }}>Recent activity</h3>
+                {activity.length === 0 ? (
+                  <p className="sidebar-empty">Nothing yet.</p>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 11, fontSize: 13 }}>
+                    {activity.map((a, i) => (
+                      <div key={i} style={{ display: "flex", gap: 12 }}>
+                        <span style={{ color: "var(--color-text-muted)", minWidth: 52 }}>
+                          {relativeTime(a.at)}
+                        </span>
+                        <span>{a.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
