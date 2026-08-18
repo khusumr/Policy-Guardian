@@ -9,3 +9,5 @@ pytest
 httpx
 python-docx
 reportlab
+pypdf
+python-multipart

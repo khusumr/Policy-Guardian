@@ -1,7 +1,7 @@
 from enum import Enum
 from io import BytesIO
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
@@ -9,9 +9,16 @@ from pydantic import BaseModel, Field, field_validator
 from openai_service import OpenAIService
 from prompt_builder import build_policy_prompt
 from logger import get_logger
-from policy_repository import create_policy, get_policy, list_policies
-from models import StoredPolicy
+from policy_repository import (
+    create_policy,
+    get_policy,
+    list_policies,
+    update_policy,
+    get_policy_history,
+)
+from models import StoredPolicy, PolicySource
 from file_service import policy_to_docx_bytes, policy_to_pdf_bytes
+from document_parser import extract_text_from_upload, UnsupportedFileTypeError
 
 
 # --------------------------------------------------
@@ -188,6 +195,11 @@ class AskAIRequest(BaseModel):
             raise ValueError("Field cannot be blank.")
 
         return value
+
+
+class UpdatePolicyRequest(BaseModel):
+    content: str = Field(..., min_length=10, max_length=20000)
+    edited_by: str | None = None
 
 
 # --------------------------------------------------
@@ -444,6 +456,97 @@ def fetch_policy(
 )
 def fetch_all_policies(org_id: str):
     return list_policies(org_id)
+
+
+@app.post(
+    "/policies/{org_id}/upload",
+    tags=["Policy Storage"],
+    summary="Upload an existing policy",
+)
+async def upload_policy(
+    org_id: str,
+    company_name: str = Form(...),
+    policy_type: PolicyType = Form(...),
+    file: UploadFile = File(...),
+):
+    logger.info(
+        f"Received policy upload for org={org_id}, filename={file.filename}"
+    )
+
+    try:
+        file_bytes = await file.read()
+        extracted_text = extract_text_from_upload(file.filename, file_bytes)
+
+        if not extracted_text.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Could not extract any text from the uploaded file.",
+            )
+
+        policy = StoredPolicy(
+            company_name=company_name,
+            policy_type=policy_type.value,
+            tone="Uploaded",
+            requirements=[],
+            content=extracted_text,
+            source=PolicySource.uploaded,
+            original_filename=file.filename,
+        )
+
+        saved = create_policy(org_id, policy)
+
+    except UnsupportedFileTypeError as e:
+        logger.warning(f"Unsupported upload type: {e}")
+
+        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Policy upload failed: {e}")
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to upload policy. Please try again.",
+        )
+
+    logger.info(f"Successfully uploaded and saved policy for org={org_id}")
+
+    return saved
+
+
+@app.patch(
+    "/policies/{org_id}/{policy_id}",
+    tags=["Policy Storage"],
+    summary="Edit a saved policy (creates a new version)",
+)
+def edit_policy(
+    org_id: str,
+    policy_id: str,
+    request: UpdatePolicyRequest,
+):
+    updated = update_policy(
+        org_id,
+        policy_id,
+        {"content": request.content},
+        edited_by=request.edited_by,
+    )
+
+    if not updated:
+        raise HTTPException(
+            status_code=404,
+            detail="Policy not found",
+        )
+
+    return updated
+
+
+@app.get(
+    "/policies/{org_id}/{policy_id}/history",
+    tags=["Policy Storage"],
+    summary="Get version history for a policy",
+)
+def policy_history(org_id: str, policy_id: str):
+    return get_policy_history(org_id, policy_id)
 
 
 # --------------------------------------------------
