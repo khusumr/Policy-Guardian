@@ -18,13 +18,20 @@ resource "azurerm_linux_web_app" "backend" {
   location            = data.azurerm_resource_group.main.location
   service_plan_id     = azurerm_service_plan.backend.id
 
-  # System-assigned identity for least-privilege blob access (see the
-  # role assignment below). storage_service.py still authenticates via
-  # AZURE_STORAGE_CONNECTION_STRING today, not this identity — granting
-  # the role here doesn't reduce actual exposure until that code is
-  # migrated to DefaultAzureCredential. Flagging rather than cutting over
-  # blind, since that's a runtime auth change that needs to be verified
-  # against live Azure, not just planned.
+  # System-assigned identity for least-privilege blob access. The role
+  # assignment granting it "Storage Blob Data Contributor" is deliberately
+  # NOT in this same apply: adding an identity to an *existing* resource
+  # and referencing its principal_id from another resource in the same
+  # plan hits a known azurerm provider limitation (the identity's
+  # principal_id can't be resolved until it has actually settled into
+  # state) — terraform plan fails with "Missing required argument" on
+  # `identity[0].principal_id`. Once this merges and applies, the identity
+  # will be a known value in state, and the role assignment can be added
+  # safely in a follow-up. storage_service.py still authenticates via
+  # AZURE_STORAGE_CONNECTION_STRING regardless — granting the role doesn't
+  # reduce actual exposure until that code is migrated to
+  # DefaultAzureCredential, which also needs to happen before this
+  # identity is load-bearing.
   identity {
     type = "SystemAssigned"
   }
@@ -66,14 +73,10 @@ resource "azurerm_linux_web_app" "backend" {
   virtual_network_subnet_id = azurerm_subnet.backend_integration.id
 }
 
-# Least-privilege data access for the backend's managed identity, scoped to
-# just this storage account (not the resource group or subscription). Not
-# yet load-bearing — see the identity block above.
-resource "azurerm_role_assignment" "backend_storage_access" {
-  scope                = azurerm_storage_account.main.id
-  role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = azurerm_linux_web_app.backend.identity[0].principal_id
-}
+# The role assignment granting this identity "Storage Blob Data
+# Contributor" (scoped to just the storage account) is added in a
+# follow-up PR, once the identity above has settled into state — see the
+# comment on the identity block for why it can't land in the same apply.
 
 # ---------------------------------------------------------------------------
 # storage_service.py currently hardcodes CONTAINER_NAME = "policies", which
