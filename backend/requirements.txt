@@ -4,6 +4,7 @@ pydantic
 python-dotenv
 openai
 azure-storage-blob
+azure-identity
 azure-search-documents
 pytest
 httpx
