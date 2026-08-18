@@ -96,6 +96,26 @@ class PolicyRequest(BaseModel):
         max_length=20,
     )
 
+    # Optional — when the caller already has finished policy text (e.g. a
+    # section a user has edited/reworded in the frontend), pass it here to
+    # store it as-is instead of having this endpoint generate new content
+    # from `requirements`. Lets "save for export" reflect exactly what's on
+    # screen rather than a fresh, possibly different AI generation.
+    content: str | None = Field(
+        default=None,
+        max_length=20000,
+    )
+
+    @field_validator("content")
+    @classmethod
+    def validate_content(cls, value: str | None):
+        if value is None:
+            return value
+
+        value = value.strip()
+
+        return value or None
+
     @field_validator("company_name")
     @classmethod
     def validate_company_name(cls, value: str):
@@ -353,14 +373,17 @@ def save_generated_policy(
     )
 
     try:
-        prompt = build_policy_prompt(
-            company_name=request.company_name,
-            policy_type=request.policy_type.value,
-            tone=request.tone.value,
-            requirements=request.requirements,
-        )
+        if request.content is not None:
+            content = request.content
+        else:
+            prompt = build_policy_prompt(
+                company_name=request.company_name,
+                policy_type=request.policy_type.value,
+                tone=request.tone.value,
+                requirements=request.requirements,
+            )
 
-        content = openai_service.generate_policy(prompt)
+            content = openai_service.generate_policy(prompt)
 
         policy = StoredPolicy(
             company_name=request.company_name,

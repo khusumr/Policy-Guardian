@@ -177,6 +177,60 @@ def test_refine_policy_openai_failure(mock_generate):
     }
 
 
+# --------------------------------------------------
+# Policy Storage — POST /policies
+# --------------------------------------------------
+
+@patch("main.create_policy")
+@patch("main.openai_service.generate_policy")
+def test_save_policy_with_content_skips_generation(mock_generate, mock_create):
+    mock_create.side_effect = lambda org_id, policy: policy
+
+    response = client.post(
+        "/policies?org_id=test-org",
+        json={
+            "company_name": "Quadrant Technologies",
+            "policy_type": "Work From Home",
+            "tone": "Professional",
+            "requirements": ["Employees may work remotely twice per week."],
+            "content": "This is the exact edited text from the frontend.",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["content"] == "This is the exact edited text from the frontend."
+    mock_generate.assert_not_called()
+    mock_create.assert_called_once()
+
+
+@patch("main.create_policy")
+@patch("main.openai_service.generate_policy")
+def test_save_policy_without_content_generates(mock_generate, mock_create):
+    mock_generate.return_value = "Freshly generated policy text"
+    mock_create.side_effect = lambda org_id, policy: policy
+
+    response = client.post(
+        "/policies?org_id=test-org",
+        json={
+            "company_name": "Quadrant Technologies",
+            "policy_type": "Work From Home",
+            "tone": "Professional",
+            "requirements": ["Employees may work remotely twice per week."],
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["content"] == "Freshly generated policy text"
+    mock_generate.assert_called_once()
+    mock_create.assert_called_once()
+
+
 @patch("main.get_policy")
 def test_fetch_policy_not_found(mock_get_policy):
     mock_get_policy.return_value = None
