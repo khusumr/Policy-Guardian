@@ -1,8 +1,9 @@
 import json
 
 from azure.storage.blob import BlobServiceClient
+from azure.identity import DefaultAzureCredential
 
-from settings import AZURE_STORAGE_CONNECTION_STRING
+from settings import AZURE_STORAGE_CONNECTION_STRING, AZURE_STORAGE_ACCOUNT_NAME
 from logger import get_logger
 
 
@@ -16,17 +17,30 @@ class StorageService:
         self.client = None
         self.container = None
 
-        if not AZURE_STORAGE_CONNECTION_STRING:
-            logger.warning(
-                "AZURE_STORAGE_CONNECTION_STRING is not configured. "
-                "Blob Storage operations will be unavailable."
-            )
-            return
-
         try:
-            self.client = BlobServiceClient.from_connection_string(
-                AZURE_STORAGE_CONNECTION_STRING
-            )
+            if AZURE_STORAGE_CONNECTION_STRING:
+                self.client = BlobServiceClient.from_connection_string(
+                    AZURE_STORAGE_CONNECTION_STRING
+                )
+            elif AZURE_STORAGE_ACCOUNT_NAME:
+                # Managed-identity path — this is what the backend's
+                # system-assigned identity + "Storage Blob Data Contributor"
+                # role assignment (see terraform/app-service.tf) is for.
+                # Connection string takes priority above so this doesn't
+                # change current behavior until AZURE_STORAGE_CONNECTION_STRING
+                # is actually removed from the App Service config.
+                account_url = f"https://{AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net"
+                self.client = BlobServiceClient(
+                    account_url=account_url,
+                    credential=DefaultAzureCredential(),
+                )
+            else:
+                logger.warning(
+                    "Neither AZURE_STORAGE_CONNECTION_STRING nor "
+                    "AZURE_STORAGE_ACCOUNT_NAME is configured. Blob Storage "
+                    "operations will be unavailable."
+                )
+                return
 
             self.container = self.client.get_container_client(CONTAINER_NAME)
 
