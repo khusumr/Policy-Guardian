@@ -60,6 +60,15 @@ resource "azurerm_linux_web_app" "backend" {
     # project. Flagging rather than silently deciding for the team.
     "AZURE_STORAGE_CONNECTION_STRING" = azurerm_storage_account.main.primary_connection_string
 
+    # storage_service.py now supports authenticating via this identity
+    # instead of the connection string above, but only uses it when
+    # AZURE_STORAGE_CONNECTION_STRING is absent — so setting this alongside
+    # the connection string doesn't change current behavior. Included now
+    # so the managed-identity path is fully wired and ready to test; the
+    # actual cutover (removing the connection string above) is a separate,
+    # deliberate change once that path has been verified live.
+    "AZURE_STORAGE_ACCOUNT_NAME" = azurerm_storage_account.main.name
+
     # Placeholders — openai_service.py already handles these being unset
     # (falls back to its placeholder response), so leaving blank here is
     # safe until real Azure OpenAI credentials exist.
