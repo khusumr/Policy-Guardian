@@ -72,11 +72,17 @@ XML
 resource "azurerm_monitor_metric_alert" "backend_availability" {
   name                = "alert-ai-policy-backend-availability"
   resource_group_name = data.azurerm_resource_group.main.name
-  scopes              = [azurerm_application_insights.backend.id]
-  description         = "SLO: 99% of pings succeed over 15 min. Fires when availability drops below that."
-  severity            = 1
-  frequency           = "PT5M"
-  window_size         = "PT15M"
+  # Availability alerts on a web test need BOTH the web test and the App
+  # Insights resource in scopes — App Insights alone gets rejected by the
+  # API with "Alert scope is invalid" (confirmed against live Azure).
+  scopes = [
+    azurerm_application_insights_web_test.backend_ping.id,
+    azurerm_application_insights.backend.id,
+  ]
+  description = "SLO: 99% of pings succeed over 15 min. Fires when availability drops below that."
+  severity    = 1
+  frequency   = "PT5M"
+  window_size = "PT15M"
 
   application_insights_web_test_location_availability_criteria {
     web_test_id           = azurerm_application_insights_web_test.backend_ping.id
