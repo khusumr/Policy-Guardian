@@ -4,7 +4,7 @@ from io import BytesIO
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from openai_service import OpenAIService
 from prompt_builder import build_policy_prompt
@@ -98,11 +98,30 @@ class PolicyRequest(BaseModel):
     policy_type: PolicyType
     tone: Tone
 
+    # Required when policy_type is "Custom Section" — otherwise the AI has
+    # no actual subject to write about, since "Custom Section" itself
+    # isn't a topic (see build_policy_prompt). Optional for the other,
+    # predefined policy types.
+    title: str | None = Field(
+        default=None,
+        max_length=150,
+    )
+
     requirements: list[str] = Field(
         ...,
         min_length=1,
         max_length=20,
     )
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str | None):
+        if value is None:
+            return value
+
+        value = value.strip()
+
+        return value or None
 
     # Optional — when the caller already has finished policy text (e.g. a
     # section a user has edited/reworded in the frontend), pass it here to
@@ -148,6 +167,16 @@ class PolicyRequest(BaseModel):
             cleaned_requirements.append(requirement)
 
         return cleaned_requirements
+
+    @model_validator(mode="after")
+    def validate_custom_section_has_title(self):
+        if self.policy_type == PolicyType.custom_section and not self.title:
+            raise ValueError(
+                "title is required when policy_type is 'Custom Section' — "
+                "otherwise there's no actual subject for the policy."
+            )
+
+        return self
 
 
 class RefinePolicyRequest(BaseModel):
@@ -242,6 +271,7 @@ def generate_policy_endpoint(request: PolicyRequest):
             policy_type=request.policy_type.value,
             tone=request.tone.value,
             requirements=request.requirements,
+            title=request.title,
         )
 
         policy = openai_service.generate_policy(prompt)
@@ -397,6 +427,7 @@ def save_generated_policy(
                 policy_type=request.policy_type.value,
                 tone=request.tone.value,
                 requirements=request.requirements,
+                title=request.title,
             )
 
             content = openai_service.generate_policy(prompt)
@@ -404,6 +435,7 @@ def save_generated_policy(
         policy = StoredPolicy(
             company_name=request.company_name,
             policy_type=request.policy_type.value,
+            title=request.title,
             tone=request.tone.value,
             requirements=request.requirements,
             content=content,
@@ -580,9 +612,13 @@ def export_policy_docx(
         )
 
     try:
+        # For Custom Section policies, policy_type isn't a real subject
+        # (see prompt_builder.py) — use the actual title instead so the
+        # export isn't literally named "{company} Custom Section".
+        subject = policy.title if (policy.policy_type == "Custom Section" and policy.title) else policy.policy_type
         title = (
             f"{policy.company_name} "
-            f"{policy.policy_type}"
+            f"{subject}"
         )
 
         docx_bytes = policy_to_docx_bytes(
@@ -633,9 +669,13 @@ def export_policy_pdf(
         )
 
     try:
+        # For Custom Section policies, policy_type isn't a real subject
+        # (see prompt_builder.py) — use the actual title instead so the
+        # export isn't literally named "{company} Custom Section".
+        subject = policy.title if (policy.policy_type == "Custom Section" and policy.title) else policy.policy_type
         title = (
             f"{policy.company_name} "
-            f"{policy.policy_type}"
+            f"{subject}"
         )
 
         pdf_bytes = policy_to_pdf_bytes(

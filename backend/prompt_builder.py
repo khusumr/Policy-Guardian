@@ -6,15 +6,24 @@ def build_policy_prompt(
     policy_type: str,
     tone: str,
     requirements: List[str],
+    title: str | None = None,
 ) -> str:
     requirements_text = "\n".join(
         f"- {requirement}" for requirement in requirements
     )
 
+    # "Custom Section" isn't itself a topic — it's just the category for
+    # anything that doesn't fit the predefined policy types. Without a
+    # real subject, the AI has nothing concrete to write about (it would
+    # otherwise be told to write a "Custom Section policy", which means
+    # nothing). The caller-supplied title is the actual subject in that
+    # case; for predefined types, policy_type already is the subject.
+    subject = title if (policy_type == "Custom Section" and title) else policy_type
+
     prompt = f"""
 You are an experienced HR policy writer.
 
-Create a complete {tone.lower()} {policy_type} policy for {company_name}.
+Create a complete {tone.lower()} policy titled "{subject}" for {company_name}.
 
 Organization requirements:
 {requirements_text}
