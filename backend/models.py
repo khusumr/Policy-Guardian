@@ -16,6 +16,13 @@ class PolicySource(str, Enum):
     uploaded = "uploaded"
 
 
+class ReferenceLink(BaseModel):
+    title: str
+    url: str
+    source: str
+    description: str
+
+
 class StoredPolicy(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     company_name: str
@@ -30,6 +37,7 @@ class StoredPolicy(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     review_date: datetime | None = None
+    further_reading: list[ReferenceLink] = Field(default_factory=list)
 
 
 class PolicyVersion(BaseModel):

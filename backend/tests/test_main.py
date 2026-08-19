@@ -44,8 +44,44 @@ def test_generate_policy_valid_request(mock_generate):
 
     assert "policy" in data
     assert data["policy"] == "Generated Work From Home Policy"
+    assert data["further_reading"] == []
 
     mock_generate.assert_called_once()
+
+
+@patch("main.get_reference_links")
+@patch("main.openai_service.generate_policy")
+def test_generate_policy_includes_further_reading(mock_generate, mock_links):
+    mock_generate.return_value = "Generated Security Policy"
+    mock_links.return_value = [
+        {
+            "title": "HIPAA Security Rule",
+            "url": "https://www.hhs.gov/hipaa/for-professionals/security/index.html",
+            "source": "U.S. Department of Health & Human Services",
+            "description": "Federal standards for protecting electronic personal health information.",
+        }
+    ]
+
+    response = client.post(
+        "/generate-policy",
+        json={
+            "company_name": "Quadrant Technologies",
+            "policy_type": "Security Policy",
+            "tone": "Professional",
+            "requirements": [
+                "Employees must use multi-factor authentication."
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data["further_reading"]) == 1
+    assert data["further_reading"][0]["title"] == "HIPAA Security Rule"
+
+    mock_links.assert_called_once_with("Security Policy")
 
 
 def test_generate_policy_invalid_request():
@@ -203,8 +239,43 @@ def test_save_policy_with_content_skips_generation(mock_generate, mock_create):
     data = response.json()
 
     assert data["content"] == "This is the exact edited text from the frontend."
+    assert data["further_reading"] == []
     mock_generate.assert_not_called()
     mock_create.assert_called_once()
+
+
+@patch("main.create_policy")
+@patch("main.get_reference_links")
+def test_save_policy_attaches_further_reading(mock_links, mock_create):
+    mock_links.return_value = [
+        {
+            "title": "Fair Labor Standards Act (FLSA) — Overtime Pay",
+            "url": "https://www.dol.gov/agencies/whd/overtime",
+            "source": "U.S. Department of Labor",
+            "description": "Federal rules governing minimum wage and overtime pay eligibility.",
+        }
+    ]
+    mock_create.side_effect = lambda org_id, policy: policy
+
+    response = client.post(
+        "/policies?org_id=test-org",
+        json={
+            "company_name": "Quadrant Technologies",
+            "policy_type": "Attendance Policy",
+            "tone": "Professional",
+            "requirements": ["Employees must clock in by 9am."],
+            "content": "Employees are expected to arrive on time.",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data["further_reading"]) == 1
+    assert data["further_reading"][0]["source"] == "U.S. Department of Labor"
+
+    mock_links.assert_called_once_with("Attendance Policy")
 
 
 @patch("main.create_policy")
