@@ -2,20 +2,31 @@ import { useState } from "react";
 import {
   sendRoleToEmployees,
   getMockUsersByRole,
+  getAssignmentsForEmployee,
   roleLabel,
   getMockManager,
 } from "../Data/store";
+import { formatShortDate } from "../utils/format";
 import Button from "../components/ui/Button";
+import Tag from "../components/ui/Tag";
 
 // Shows every section for a role stitched into one document.
-// HR can select specific people and send the policy to them.
+// HR can select specific people and send the policy to them, and see
+// who has already signed (the per-policy view of signatures — the
+// per-employee view lives on the HR home / Teams tables).
 
-function PolicyOverall({ role, sections }) {
+function PolicyOverall({ role, sections, onViewRecord }) {
   const [sent, setSent] = useState(false);
   const [selectedRecipients, setSelectedRecipients] = useState([]);
 
   const roleSections = sections.filter((s) => s.role === role);
   const recipients = getMockUsersByRole(role);
+  const signatures = recipients
+    .map((person) => ({
+      person,
+      assignment: getAssignmentsForEmployee(person.id).find((a) => a.role === role),
+    }))
+    .filter((row) => row.assignment);
 
   function toggleRecipient(userId) {
     setSelectedRecipients((prev) =>
@@ -150,6 +161,45 @@ function PolicyOverall({ role, sections }) {
                 : "people"}.
             </p>
           )}
+        </div>
+      )}
+
+      {signatures.length > 0 && (
+        <div className="card panel recipient-panel" style={{ marginTop: 24 }}>
+          <h2>Signatures</h2>
+          <p className="editor-hint">
+            Everyone this policy has been sent to, and whether they've signed it.
+          </p>
+
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Person</th>
+                <th style={{ textAlign: "right" }}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {signatures.map(({ person, assignment }) => {
+                const isSigned = assignment.status === "signed";
+                return (
+                  <tr
+                    key={person.id}
+                    onClick={isSigned ? () => onViewRecord?.(assignment, person.name) : undefined}
+                    style={{ cursor: isSigned ? "pointer" : "default" }}
+                  >
+                    <td data-label="Person" style={{ fontWeight: 600 }}>{person.name}</td>
+                    <td data-label="Status" style={{ textAlign: "right" }}>
+                      {isSigned ? (
+                        <Tag variant="accent">Signed {formatShortDate(assignment.signedAt)}</Tag>
+                      ) : (
+                        <Tag variant="amber">Pending</Tag>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

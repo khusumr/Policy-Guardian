@@ -6,6 +6,7 @@ import {
 } from "../Data/aiMock";
 import { Input } from "../components/ui/FormControls";
 import Button from "../components/ui/Button";
+import LoadingDots from "../components/ui/LoadingDots";
 
 // A private, unshared chat for a manager or HR person to talk through
 // an incident, then generate a summary + suggested next steps. Nothing
@@ -90,7 +91,7 @@ function IncidentReport() {
               spellCheck="true"
             />
             <Button variant="primary" disabled={sending}>
-              {sending ? "Sending..." : "Send"}
+              {sending ? <LoadingDots /> : "Send"}
             </Button>
           </form>
 
@@ -100,7 +101,7 @@ function IncidentReport() {
               onClick={handleGenerate}
               disabled={userMessageCount === 0 || generating}
             >
-              {generating ? "Generating..." : "Generate Summary Report"}
+              {generating ? <LoadingDots /> : "Generate Summary Report"}
             </Button>
             {(messages.length > 0 || summary) && (
               <button className="link-button" onClick={handleReset}>

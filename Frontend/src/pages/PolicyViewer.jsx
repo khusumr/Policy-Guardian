@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Highlighter from "../components/ai/Highlighter";
 import AIResponsePanel from "../components/ai/AIResponsePanel";
+import { Input } from "../components/ui/FormControls";
 import { signAssignment, roleLabel } from "../Data/store";
 
 // Jump-to-section anchors so a multi-part policy (WFH + PTO + Code of
@@ -13,9 +14,15 @@ function sectionAnchorId(sectionId) {
 function PolicyViewer({ assignment, onSigned }) {
   const [aiMode, setAiMode] = useState(null); // null | "ask"
   const [highlightedText, setHighlightedText] = useState("");
+  const [signerName, setSignerName] = useState("");
+  const [agreed, setAgreed] = useState(false);
 
-  function handleSign() {
-    signAssignment(assignment.id);
+  const canSign = signerName.trim() && agreed;
+
+  function handleSign(e) {
+    e.preventDefault();
+    if (!canSign) return;
+    signAssignment(assignment.id, signerName.trim());
     onSigned();
   }
 
@@ -34,7 +41,8 @@ function PolicyViewer({ assignment, onSigned }) {
 
         {assignment.status === "signed" ? (
           <p className="signed-note">
-            Signed on {new Date(assignment.signedAt).toLocaleDateString()}
+            Signed{assignment.signedBy ? ` by ${assignment.signedBy}` : ""} on{" "}
+            {new Date(assignment.signedAt).toLocaleDateString()}
           </p>
         ) : (
           <p className="pending-note">Highlight any text to ask AI about it.</p>
@@ -73,9 +81,27 @@ function PolicyViewer({ assignment, onSigned }) {
       </Highlighter>
 
       {assignment.status !== "signed" && (
-        <button className="sign-button" onClick={handleSign}>
-          Sign & Accept
-        </button>
+        <form onSubmit={handleSign} className="sign-form">
+          <Input
+            placeholder="Type your full name to sign"
+            value={signerName}
+            onChange={(e) => setSignerName(e.target.value)}
+            required
+            style={{ maxWidth: 320 }}
+          />
+          <label className="sign-agree">
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => setAgreed(e.target.checked)}
+              required
+            />
+            I have read and agree to this policy
+          </label>
+          <button type="submit" className="sign-button" disabled={!canSign}>
+            Sign & Accept
+          </button>
+        </form>
       )}
 
       {aiMode && (

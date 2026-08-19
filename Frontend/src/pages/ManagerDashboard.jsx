@@ -8,6 +8,7 @@ import { Field, Select } from "../components/ui/FormControls";
 import ManagerCoverageDonut from "../components/ManagerCoverageDonut";
 import {
   getAssignmentsForEmployee,
+  getAssignment,
   getMockTeam,
   getMockManager,
   getAllRoles,
@@ -50,9 +51,7 @@ function ManagerDashboard({ user, onLogout }) {
 
   function handleSigned() {
     refresh();
-    setSelectedAssignment((prev) =>
-      prev ? { ...prev, status: "signed", signedAt: new Date().toISOString() } : prev
-    );
+    setSelectedAssignment((prev) => (prev ? getAssignment(prev.id) : prev));
   }
 
   const rows = teamMembers.flatMap((member) =>

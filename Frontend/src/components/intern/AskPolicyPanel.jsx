@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { askAIAboutText } from "../../Data/aiMock";
 import { Input } from "../ui/FormControls";
+import Button from "../ui/Button";
+import LoadingDots from "../ui/LoadingDots";
 
 // The seeded example from the design mock, shown before the user asks
 // anything of their own.
@@ -59,16 +61,24 @@ function AskPolicyPanel({ policyContext }) {
             {m.citation && <div className="agent-msg-citation">{m.citation}</div>}
           </div>
         ))}
-        {loading && <div className="agent-msg agent-msg-reply">Thinking…</div>}
+        {loading && (
+          <div className="agent-msg agent-msg-reply">
+            <LoadingDots />
+          </div>
+        )}
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} style={{ display: "flex", gap: 8 }}>
         <Input
           placeholder="Ask about a policy…"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           disabled={loading}
+          style={{ flex: 1 }}
         />
+        <Button variant="primary" size="sm" disabled={loading || !input.trim()}>
+          {loading ? <LoadingDots /> : "Ask"}
+        </Button>
       </form>
     </div>
   );

@@ -26,7 +26,7 @@ from document_parser import extract_text_from_upload, UnsupportedFileTypeError
 # --------------------------------------------------
 
 app = FastAPI(
-    title="AI Policy Generator API",
+    title="Policy Pilot API",
     description=(
         "Backend API for generating, refining, storing, "
         "retrieving, and exporting HR policies using Azure OpenAI."

@@ -8,6 +8,7 @@ import IncidentReport from "./IncidentReport";
 import UploadPolicyForm from "./UploadPolicyForm";
 import Settings from "./Settings";
 import PolicyLibrary from "./PolicyLibrary";
+import SignedRecord from "./SignedRecord";
 import TopNav from "../components/ui/TopNav";
 import Button from "../components/ui/Button";
 import Tag from "../components/ui/Tag";
@@ -35,16 +36,16 @@ function getEmployeeStatus(employeeId) {
   const assignments = getAssignmentsForEmployee(employeeId);
 
   if (assignments.length === 0) {
-    return { variant: "neutral", label: "Not sent" };
+    return { variant: "neutral", label: "Not sent", assignment: null };
   }
 
   const signed = assignments.find((a) => a.status === "signed");
 
   if (signed) {
-    return { variant: "accent", label: `Signed ${formatShortDate(signed.signedAt)}` };
+    return { variant: "accent", label: `Signed ${formatShortDate(signed.signedAt)}`, assignment: signed };
   }
 
-  return { variant: "amber", label: "Pending" };
+  return { variant: "amber", label: "Pending", assignment: assignments[0] };
 }
 
 function HRDashboard({ user, onLogout }) {
@@ -56,6 +57,12 @@ function HRDashboard({ user, onLogout }) {
   const [pending, setPending] = useState(null);
   const [customSectionRole, setCustomSectionRole] = useState(null);
   const [uploadRole, setUploadRole] = useState(null);
+  const [viewingRecord, setViewingRecord] = useState(null); // { assignment, employeeName }
+
+  function handleViewRecord(assignment, employeeName) {
+    if (assignment.status !== "signed") return;
+    setViewingRecord({ assignment, employeeName });
+  }
 
   function refreshSections() {
     setSections(getSections());
@@ -163,7 +170,15 @@ function HRDashboard({ user, onLogout }) {
         onLogout={onLogout}
       />
 
-      {view === "policies" ? (
+      {viewingRecord ? (
+        <div className="content">
+          <SignedRecord
+            assignment={viewingRecord.assignment}
+            employeeName={viewingRecord.employeeName}
+            onBack={() => setViewingRecord(null)}
+          />
+        </div>
+      ) : view === "policies" ? (
         <div className="dashboard">
           <Sidebar
             sections={sections}
@@ -180,7 +195,12 @@ function HRDashboard({ user, onLogout }) {
             {page === "editor" && selectedSection ? (
               <SectionEditor key={selectedSection.id} section={selectedSection} onUpdated={handleSectionUpdated} />
             ) : page === "overall" && selectedRole ? (
-              <PolicyOverall key={selectedRole} role={selectedRole} sections={sections} />
+              <PolicyOverall
+                key={selectedRole}
+                role={selectedRole}
+                sections={sections}
+                onViewRecord={handleViewRecord}
+              />
             ) : page === "generate" && pending ? (
               <SectionGenerate
                 key={`${pending.role}:${pending.sectionType}`}
@@ -215,11 +235,21 @@ function HRDashboard({ user, onLogout }) {
                 const reports = getMockTeam(manager.id);
                 const managerStatus = getEmployeeStatus(manager.id);
 
+                const managerSigned = managerStatus.assignment?.status === "signed";
+
                 return (
                   <div key={manager.id}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}
+                      onClick={managerSigned ? () => handleViewRecord(managerStatus.assignment, manager.name) : undefined}
+                    >
                       <h3 style={{ margin: 0 }}>{manager.name}'s Team</h3>
-                      <Tag variant={managerStatus.variant}>Manager · {managerStatus.label}</Tag>
+                      <Tag
+                        variant={managerStatus.variant}
+                        style={{ cursor: managerSigned ? "pointer" : "default" }}
+                      >
+                        Manager · {managerStatus.label}
+                      </Tag>
                     </div>
 
                     {reports.length === 0 ? (
@@ -236,8 +266,13 @@ function HRDashboard({ user, onLogout }) {
                         <tbody>
                           {reports.map((member) => {
                             const status = getEmployeeStatus(member.id);
+                            const isSigned = status.assignment?.status === "signed";
                             return (
-                              <tr key={member.id}>
+                              <tr
+                                key={member.id}
+                                onClick={isSigned ? () => handleViewRecord(status.assignment, member.name) : undefined}
+                                style={{ cursor: isSigned ? "pointer" : "default" }}
+                              >
                                 <td data-label="Employee" style={{ fontWeight: 600 }}>{member.name}</td>
                                 <td data-label="Role">{roleLabel(member.role)}</td>
                                 <td data-label="Status" style={{ textAlign: "right" }}>
@@ -323,8 +358,14 @@ function HRDashboard({ user, onLogout }) {
                       const manager = member.managerId ? getMockManager(member.managerId) : null;
                       const status = getEmployeeStatus(member.id);
 
+                      const isSigned = status.assignment?.status === "signed";
+
                       return (
-                        <tr key={member.id}>
+                        <tr
+                          key={member.id}
+                          onClick={isSigned ? () => handleViewRecord(status.assignment, member.name) : undefined}
+                          style={{ cursor: isSigned ? "pointer" : "default" }}
+                        >
                           <td data-label="Employee" style={{ fontWeight: 600 }}>{member.name}</td>
                           <td data-label="Team">
                             {member.role === "manager" ? "—" : manager ? `${manager.name}'s Team` : "No Team"}
