@@ -35,3 +35,13 @@ output "application_insights_connection_string" {
 output "log_analytics_workspace_name" {
   value = azurerm_log_analytics_workspace.main.name
 }
+
+output "search_service_endpoint" {
+  value = "https://${azurerm_search_service.main.name}.search.windows.net"
+}
+
+output "search_service_admin_key" {
+  description = "For running search_index_setup.py / seed_reference_links.py locally — not used by the app itself."
+  value       = azurerm_search_service.main.primary_key
+  sensitive   = true
+}

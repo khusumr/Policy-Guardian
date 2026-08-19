@@ -60,6 +60,15 @@ resource "azurerm_linux_web_app" "backend" {
     "AZURE_OPENAI_DEPLOYMENT" = var.azure_openai_deployment
 
     "APPLICATIONINSIGHTS_CONNECTION_STRING" = azurerm_application_insights.backend.connection_string
+
+    # Runtime uses a query key (read-only, search-only) rather than the
+    # admin key — the app only ever queries this index, never manages its
+    # schema or documents, so it doesn't need write access. The admin key
+    # (for search_index_setup.py / seed_reference_links.py) is a separate
+    # sensitive output, not an app setting.
+    "AZURE_SEARCH_ENDPOINT" = "https://${azurerm_search_service.main.name}.search.windows.net"
+    "AZURE_SEARCH_KEY"      = azurerm_search_service.main.query_keys[0].key
+    "AZURE_SEARCH_INDEX"    = "policy-reference-links"
   }
 
   virtual_network_subnet_id = azurerm_subnet.backend_integration.id

@@ -19,6 +19,7 @@ from policy_repository import (
 from models import StoredPolicy, PolicySource
 from file_service import policy_to_docx_bytes, policy_to_pdf_bytes
 from document_parser import extract_text_from_upload, UnsupportedFileTypeError
+from search_service import get_reference_links
 
 
 # --------------------------------------------------
@@ -257,8 +258,11 @@ def generate_policy_endpoint(request: PolicyRequest):
         f"Successfully generated policy for {request.company_name}"
     )
 
+    further_reading = get_reference_links(request.policy_type.value)
+
     return {
-        "policy": policy
+        "policy": policy,
+        "further_reading": further_reading,
     }
 
 
@@ -403,6 +407,7 @@ def save_generated_policy(
             tone=request.tone.value,
             requirements=request.requirements,
             content=content,
+            further_reading=get_reference_links(request.policy_type.value),
         )
 
         saved = create_policy(
