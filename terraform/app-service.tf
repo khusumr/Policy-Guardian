@@ -18,20 +18,11 @@ resource "azurerm_linux_web_app" "backend" {
   location            = data.azurerm_resource_group.main.location
   service_plan_id     = azurerm_service_plan.backend.id
 
-  # System-assigned identity for least-privilege blob access. The role
-  # assignment granting it "Storage Blob Data Contributor" is deliberately
-  # NOT in this same apply: adding an identity to an *existing* resource
-  # and referencing its principal_id from another resource in the same
-  # plan hits a known azurerm provider limitation (the identity's
-  # principal_id can't be resolved until it has actually settled into
-  # state) — terraform plan fails with "Missing required argument" on
-  # `identity[0].principal_id`. Once this merges and applies, the identity
-  # will be a known value in state, and the role assignment can be added
-  # safely in a follow-up. storage_service.py still authenticates via
-  # AZURE_STORAGE_CONNECTION_STRING regardless — granting the role doesn't
-  # reduce actual exposure until that code is migrated to
-  # DefaultAzureCredential, which also needs to happen before this
-  # identity is load-bearing.
+  # System-assigned identity for least-privilege blob access. This is now
+  # load-bearing: the connection-string app setting has been removed below,
+  # so storage_service.py authenticates via this identity + the
+  # "Storage Blob Data Contributor" role assignment (further down this
+  # file) exclusively.
   identity {
     type = "SystemAssigned"
   }
@@ -52,21 +43,13 @@ resource "azurerm_linux_web_app" "backend" {
   app_settings = {
     "SCM_DO_BUILD_DURING_DEPLOYMENT" = "true"
 
-    # storage_service.py reads this directly via connection string, not
-    # managed identity, so wiring it as a plain app setting matches how the
-    # code actually authenticates. NOTE: this puts a secret in App Service
-    # config in plain text — fine to get things running, but worth moving
-    # to Key Vault + managed identity before this is anything but a class
-    # project. Flagging rather than silently deciding for the team.
-    "AZURE_STORAGE_CONNECTION_STRING" = azurerm_storage_account.main.primary_connection_string
-
-    # storage_service.py now supports authenticating via this identity
-    # instead of the connection string above, but only uses it when
-    # AZURE_STORAGE_CONNECTION_STRING is absent — so setting this alongside
-    # the connection string doesn't change current behavior. Included now
-    # so the managed-identity path is fully wired and ready to test; the
-    # actual cutover (removing the connection string above) is a separate,
-    # deliberate change once that path has been verified live.
+    # Cutover complete: storage_service.py now authenticates via the
+    # managed identity below (Storage Blob Data Contributor, scoped to
+    # just this storage account) instead of a connection-string secret.
+    # No secret in App Service config anymore. If this ever needs rolling
+    # back, re-add "AZURE_STORAGE_CONNECTION_STRING" =
+    # azurerm_storage_account.main.primary_connection_string — the code
+    # still supports it and prioritizes it over the identity path.
     "AZURE_STORAGE_ACCOUNT_NAME" = azurerm_storage_account.main.name
 
     # Placeholders — openai_service.py already handles these being unset
@@ -83,11 +66,9 @@ resource "azurerm_linux_web_app" "backend" {
 }
 
 # Least-privilege data access for the backend's managed identity, scoped to
-# just this storage account (not the resource group or subscription). Now
-# safe to add: the identity settled into state in the apply that created
-# it, so this isn't referencing an unknown value from the same plan. Still
-# not load-bearing — storage_service.py authenticates via connection
-# string, not this identity, until that code is migrated.
+# just this storage account (not the resource group or subscription). This
+# is what storage_service.py actually authenticates through now that the
+# connection string has been removed above.
 resource "azurerm_role_assignment" "backend_storage_access" {
   scope                = azurerm_storage_account.main.id
   role_definition_name = "Storage Blob Data Contributor"
