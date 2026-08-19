@@ -32,7 +32,12 @@ resource "azurerm_linux_web_app" "backend" {
       python_version = "3.11"
     }
     cors {
-      allowed_origins = ["*"] # tighten to the real frontend URL once it exists
+      # Now that the frontend has a real, stable URL, this is tightened
+      # from the previous wildcard. FastAPI's own CORSMiddleware in
+      # main.py is the one that actually matters for allow_credentials +
+      # bearer-token requests — this platform-level setting is a second,
+      # matching layer, not a replacement for it.
+      allowed_origins = ["https://${azurerm_static_web_app.frontend.default_host_name}"]
     }
     # Without this, Azure just shows its default placeholder page even
     # after a successful deploy — it needs to be told how to actually
