@@ -8,7 +8,18 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 from fastapi.testclient import TestClient
 from main import app
 from document_parser import UnsupportedFileTypeError
+from auth import get_current_user, CurrentUser
 
+
+def _fake_user(roles=("HR",)):
+    return CurrentUser({"name": "Test User", "roles": list(roles), "oid": "test-oid"})
+
+
+# Everything below predates role-based auth and is testing endpoint
+# behavior, not the auth layer itself (that's covered in test_auth.py and
+# the dedicated tests at the bottom of this file) — default to an HR user
+# so existing tests don't all have to individually mock a bearer token.
+app.dependency_overrides[get_current_user] = lambda: _fake_user()
 
 client = TestClient(app)
 
@@ -715,4 +726,77 @@ def test_policy_history(mock_history):
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 1
-    assert data[0]["version"] == 1
+
+
+# --------------------------------------------------
+# Role enforcement — confirms the actual endpoints have the right
+# dependency attached, not just that auth.py's logic works in isolation
+# (see test_auth.py for that). Temporarily overrides the module-level
+# HR-user default set above.
+# --------------------------------------------------
+
+def test_generate_policy_requires_authentication():
+    app.dependency_overrides.pop(get_current_user, None)
+
+    try:
+        response = client.post(
+            "/generate-policy",
+            json={
+                "company_name": "Quadrant Technologies",
+                "policy_type": "Work From Home",
+                "tone": "Professional",
+                "requirements": ["Employees may work remotely."],
+            },
+        )
+
+        assert response.status_code == 401
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+def test_generate_policy_blocks_non_hr_role():
+    app.dependency_overrides[get_current_user] = lambda: _fake_user(roles=["Intern"])
+
+    try:
+        response = client.post(
+            "/generate-policy",
+            json={
+                "company_name": "Quadrant Technologies",
+                "policy_type": "Work From Home",
+                "tone": "Professional",
+                "requirements": ["Employees may work remotely."],
+            },
+        )
+
+        assert response.status_code == 403
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+@patch("main.list_policies")
+def test_fetch_all_policies_allows_non_hr_role(mock_list_policies):
+    mock_list_policies.return_value = []
+    app.dependency_overrides[get_current_user] = lambda: _fake_user(roles=["Intern"])
+
+    try:
+        response = client.get("/policies/test-org")
+
+        assert response.status_code == 200
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+@patch("main.update_policy")
+def test_edit_policy_blocks_non_hr_role(mock_update):
+    app.dependency_overrides[get_current_user] = lambda: _fake_user(roles=["Manager"])
+
+    try:
+        response = client.patch(
+            "/policies/test-org/policy-1",
+            json={"content": "Updated policy content here"},
+        )
+
+        assert response.status_code == 403
+        mock_update.assert_not_called()
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()

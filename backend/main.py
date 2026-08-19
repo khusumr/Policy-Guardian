@@ -1,7 +1,7 @@
 from enum import Enum
 from io import BytesIO
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import Depends, FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
@@ -20,6 +20,7 @@ from models import StoredPolicy, PolicySource
 from file_service import policy_to_docx_bytes, policy_to_pdf_bytes
 from document_parser import extract_text_from_upload, UnsupportedFileTypeError
 from search_service import get_reference_links
+from auth import get_current_user, require_role
 
 
 # --------------------------------------------------
@@ -228,7 +229,10 @@ def home():
     tags=["AI Policies"],
     summary="Generate a new HR policy",
 )
-def generate_policy_endpoint(request: PolicyRequest):
+def generate_policy_endpoint(
+    request: PolicyRequest,
+    user=Depends(require_role("HR")),
+):
 
     logger.info(
         f"Received policy generation request: "
@@ -276,7 +280,10 @@ def generate_policy_endpoint(request: PolicyRequest):
     tags=["AI Policies"],
     summary="Refine an existing HR policy",
 )
-def refine_policy_endpoint(request: RefinePolicyRequest):
+def refine_policy_endpoint(
+    request: RefinePolicyRequest,
+    user=Depends(require_role("HR")),
+):
 
     logger.info("Received policy refinement request")
 
@@ -382,6 +389,7 @@ Important rules:
 def save_generated_policy(
     org_id: str,
     request: PolicyRequest,
+    user=Depends(get_current_user),
 ):
 
     logger.info(
@@ -439,6 +447,7 @@ def save_generated_policy(
 def fetch_policy(
     org_id: str,
     policy_id: str,
+    user=Depends(get_current_user),
 ):
 
     policy = get_policy(
@@ -460,7 +469,7 @@ def fetch_policy(
     tags=["Policy Storage"],
     summary="Retrieve all policies for an organization",
 )
-def fetch_all_policies(org_id: str):
+def fetch_all_policies(org_id: str, user=Depends(get_current_user)):
     return list_policies(org_id)
 
 
@@ -474,6 +483,7 @@ async def upload_policy(
     company_name: str = Form(...),
     policy_type: PolicyType = Form(...),
     file: UploadFile = File(...),
+    user=Depends(require_role("HR")),
 ):
     logger.info(
         f"Received policy upload for org={org_id}, filename={file.filename}"
@@ -529,6 +539,7 @@ def edit_policy(
     org_id: str,
     policy_id: str,
     request: UpdatePolicyRequest,
+    user=Depends(require_role("HR")),
 ):
     updated = update_policy(
         org_id,
@@ -551,7 +562,11 @@ def edit_policy(
     tags=["Policy Storage"],
     summary="Get version history for a policy",
 )
-def policy_history(org_id: str, policy_id: str):
+def policy_history(
+    org_id: str,
+    policy_id: str,
+    user=Depends(require_role("HR")),
+):
     return get_policy_history(org_id, policy_id)
 
 
@@ -567,6 +582,7 @@ def policy_history(org_id: str, policy_id: str):
 def export_policy_docx(
     org_id: str,
     policy_id: str,
+    user=Depends(get_current_user),
 ):
 
     policy = get_policy(
@@ -620,6 +636,7 @@ def export_policy_docx(
 def export_policy_pdf(
     org_id: str,
     policy_id: str,
+    user=Depends(get_current_user),
 ):
 
     policy = get_policy(
