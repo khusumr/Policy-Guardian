@@ -109,6 +109,41 @@ def test_generate_policy_invalid_request():
     assert response.status_code == 422
 
 
+def test_generate_policy_custom_section_without_title_returns_422():
+    response = client.post(
+        "/generate-policy",
+        json={
+            "company_name": "Quadrant Technologies",
+            "policy_type": "Custom Section",
+            "tone": "Professional",
+            "requirements": ["No pets in the server room."],
+        },
+    )
+
+    assert response.status_code == 422
+
+
+@patch("main.openai_service.generate_policy")
+def test_generate_policy_custom_section_with_title_succeeds(mock_generate):
+    mock_generate.return_value = "Generated Office Pet Policy"
+
+    response = client.post(
+        "/generate-policy",
+        json={
+            "company_name": "Quadrant Technologies",
+            "policy_type": "Custom Section",
+            "title": "Office Pet Policy",
+            "tone": "Professional",
+            "requirements": ["No pets in the server room."],
+        },
+    )
+
+    assert response.status_code == 200
+
+    prompt_used = mock_generate.call_args[0][0]
+    assert 'titled "Office Pet Policy"' in prompt_used
+
+
 def test_generate_policy_blank_company_name():
     response = client.post(
         "/generate-policy",
@@ -531,6 +566,28 @@ def test_export_policy_pdf(
     assert response.content == b"fake-pdf-content"
 
     mock_pdf.assert_called_once()
+
+
+@patch("main.policy_to_pdf_bytes")
+@patch("main.get_policy")
+def test_export_custom_section_uses_real_title_not_literal_type(
+    mock_get_policy,
+    mock_pdf,
+):
+    mock_get_policy.return_value = SimpleNamespace(
+        company_name="Quadrant Technologies",
+        policy_type="Custom Section",
+        title="Office Pet Policy",
+        content="No pets in the server room.",
+    )
+
+    mock_pdf.return_value = b"fake-pdf-content"
+
+    client.get("/policies/test-org/policy-1/export/pdf")
+
+    export_title = mock_pdf.call_args[0][1]
+    assert export_title == "Quadrant Technologies Office Pet Policy"
+    assert "Custom Section" not in export_title
 
 
 @patch("main.policy_to_docx_bytes")

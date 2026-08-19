@@ -27,6 +27,11 @@ class StoredPolicy(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     company_name: str
     policy_type: str
+    # Only meaningful (and set) for policy_type == "Custom Section", where
+    # policy_type itself isn't a real subject — see prompt_builder.py.
+    # None for predefined policy types, where policy_type already names
+    # the subject.
+    title: str | None = None
     tone: str
     requirements: list[str]
     content: str
