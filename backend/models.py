@@ -48,3 +48,15 @@ class PolicyVersion(BaseModel):
     tone: str
     edited_by: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class PolicySignature(BaseModel):
+    policy_id: str
+    # From the caller's Entra token (auth.CurrentUser), not user-supplied —
+    # signed_name below is the user-typed name, kept separate so a
+    # signature can't be forged by typing someone else's name while
+    # authenticated as a different account.
+    signer_user_id: str
+    signer_roles: list[str] = Field(default_factory=list)
+    signed_name: str
+    signed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

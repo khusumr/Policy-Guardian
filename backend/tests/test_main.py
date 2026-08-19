@@ -800,3 +800,117 @@ def test_edit_policy_blocks_non_hr_role(mock_update):
         mock_update.assert_not_called()
     finally:
         app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+# --------------------------------------------------
+# Policy Signatures
+# --------------------------------------------------
+
+@patch("main.sign_policy")
+@patch("main.get_policy")
+def test_sign_policy_success(mock_get_policy, mock_sign):
+    mock_get_policy.return_value = SimpleNamespace(id="policy-1")
+    mock_sign.return_value = {
+        "policy_id": "policy-1",
+        "signer_user_id": "test-oid",
+        "signer_roles": ["HR"],
+        "signed_name": "Jane Doe",
+    }
+
+    response = client.post(
+        "/policies/test-org/policy-1/sign",
+        json={"signed_name": "Jane Doe"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["signed_name"] == "Jane Doe"
+
+    mock_sign.assert_called_once_with(
+        "test-org",
+        "policy-1",
+        signer_user_id="test-oid",
+        signer_roles=["HR"],
+        signed_name="Jane Doe",
+    )
+
+
+@patch("main.get_policy")
+def test_sign_policy_not_found(mock_get_policy):
+    mock_get_policy.return_value = None
+
+    response = client.post(
+        "/policies/test-org/missing-policy/sign",
+        json={"signed_name": "Jane Doe"},
+    )
+
+    assert response.status_code == 404
+
+
+def test_sign_policy_blank_name_returns_422():
+    response = client.post(
+        "/policies/test-org/policy-1/sign",
+        json={"signed_name": "  "},
+    )
+
+    assert response.status_code == 422
+
+
+def test_sign_policy_requires_authentication():
+    app.dependency_overrides.pop(get_current_user, None)
+
+    try:
+        response = client.post(
+            "/policies/test-org/policy-1/sign",
+            json={"signed_name": "Jane Doe"},
+        )
+
+        assert response.status_code == 401
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+@patch("main.get_signature")
+def test_signed_by_me_true(mock_get_signature):
+    mock_get_signature.return_value = {
+        "policy_id": "policy-1",
+        "signer_user_id": "test-oid",
+        "signed_name": "Jane Doe",
+    }
+
+    response = client.get("/policies/test-org/policy-1/signed-by-me")
+
+    assert response.status_code == 200
+    assert response.json()["signed"] is True
+
+
+@patch("main.get_signature")
+def test_signed_by_me_false(mock_get_signature):
+    mock_get_signature.return_value = None
+
+    response = client.get("/policies/test-org/policy-1/signed-by-me")
+
+    assert response.status_code == 200
+    assert response.json()["signed"] is False
+
+
+@patch("main.list_signatures")
+def test_policy_signatures_allows_hr_and_manager(mock_list_signatures):
+    mock_list_signatures.return_value = []
+
+    for role in ("HR", "Manager"):
+        app.dependency_overrides[get_current_user] = lambda role=role: _fake_user(roles=[role])
+        response = client.get("/policies/test-org/policy-1/signatures")
+        assert response.status_code == 200
+
+    app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+def test_policy_signatures_blocks_intern():
+    app.dependency_overrides[get_current_user] = lambda: _fake_user(roles=["Intern"])
+
+    try:
+        response = client.get("/policies/test-org/policy-1/signatures")
+
+        assert response.status_code == 403
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
