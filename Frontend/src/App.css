@@ -65,7 +65,14 @@
   --color-primary-soft: var(--color-accent-200);
 
   --color-sidebar-bg: var(--ink);
-  --color-sidebar-surface: var(--color-accent-800);
+  /* Deliberately a fixed color, not var(--color-accent-800) — that token
+     also drives .tag-accent's text color, which needs to invert with
+     the theme (dark text in light mode, light text in dark mode) to
+     stay readable on its own light badge background. The sidebar's
+     text never inverts (it's always light-on-dark), so aliasing this
+     to a token that flips left dark-mode's sidebar tabs with light
+     text on a now-light background — unreadable. */
+  --color-sidebar-surface: #33207d;
   --color-sidebar-hover: var(--color-accent);
   --color-sidebar-active: var(--color-accent);
   --color-sidebar-text: #f3f1fa;
@@ -832,8 +839,30 @@ textarea.input { min-height: 90px; resize: vertical; }
   margin-bottom: 14px;
 }
 
-.sign-button {
+.sign-form {
   margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.sign-agree {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.sign-agree input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent);
+}
+
+.sign-button {
   padding: 12px 20px;
   border: none;
   border-radius: var(--radius-md);
@@ -844,8 +873,37 @@ textarea.input { min-height: 90px; resize: vertical; }
   transition: background 0.15s ease;
 }
 
-.sign-button:hover {
+.sign-button:hover:not(:disabled) {
   background: var(--color-success-hover);
+}
+
+.sign-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loading-dots {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.loading-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.3;
+  animation: loading-dot-bounce 1.1s infinite ease-in-out both;
+}
+
+.loading-dot:nth-child(1) { animation-delay: -0.24s; }
+.loading-dot:nth-child(2) { animation-delay: -0.12s; }
+.loading-dot:nth-child(3) { animation-delay: 0s; }
+
+@keyframes loading-dot-bounce {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.7); }
+  40% { opacity: 1; transform: scale(1); }
 }
 
 

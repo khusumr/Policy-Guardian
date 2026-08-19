@@ -55,7 +55,7 @@ function Login({ setUser }) {
             <br />
             Busters
           </div>
-          <div className="login-subtitle">AI Policy Generator</div>
+          <div className="login-subtitle">Policy Pilot</div>
           <p className="login-lede">
             Draft, cite and circulate company policy — then track who has
             actually signed it.

@@ -166,8 +166,9 @@ export function saveSection(section) {
   // Existing section
   const previous = sections[index];
   const history = previous.history || [];
+  const contentChanged = previous.content !== section.content;
 
-  if (previous.content !== section.content) {
+  if (contentChanged) {
     history.push({
       content: previous.content,
       tone: previous.tone,
@@ -178,6 +179,7 @@ export function saveSection(section) {
   const updated = {
     ...section,
     history,
+    version: contentChanged ? (previous.version || 1) + 1 : previous.version || 1,
   };
 
   sections[index] = updated;
@@ -203,6 +205,7 @@ export function createSection({
     tone: tone || "Professional",
     answers: answers || {},
     history: [],
+    version: 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -256,7 +259,16 @@ export function getAssignmentsForEmployee(employeeId) {
   );
 }
 
-// Snapshots the role's current sections into an assignment.
+export function getAssignment(id) {
+  return getAssignments().find((a) => a.id === id) || null;
+}
+
+// Snapshots the role's current sections (content + version, as of right
+// now) into an assignment. Already-signed assignments are left alone —
+// a signature is a permanent record of what someone agreed to, so
+// re-sending a role's policy must not silently erase it. Send a fresh
+// version to someone who needs to re-sign by having them sign again
+// through the normal flow once their status is no longer "signed".
 export function sendRoleToEmployees(role, employeeIds) {
   const sections = getSectionsByRole(role);
 
@@ -264,6 +276,7 @@ export function sendRoleToEmployees(role, employeeIds) {
     sectionId: s.id,
     title: s.title,
     content: s.content,
+    version: s.version || 1,
   }));
 
   const assignments = getAssignments();
@@ -274,6 +287,10 @@ export function sendRoleToEmployees(role, employeeIds) {
         a.role === role &&
         a.employeeId === employeeId
     );
+
+    if (existing && existing.status === "signed") {
+      return;
+    }
 
     if (existing) {
       existing.parts = parts;
@@ -373,7 +390,7 @@ export function savePrefs(prefs) {
   return prefs;
 }
 
-export function signAssignment(assignmentId) {
+export function signAssignment(assignmentId, signedBy) {
   const assignments = getAssignments();
 
   const assignment = assignments.find(
@@ -383,6 +400,7 @@ export function signAssignment(assignmentId) {
   if (assignment) {
     assignment.status = "signed";
     assignment.signedAt = new Date().toISOString();
+    assignment.signedBy = signedBy;
 
     write(ASSIGNMENTS_KEY, assignments);
   }

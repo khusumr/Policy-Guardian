@@ -2,6 +2,7 @@ import { useState } from "react";
 import { askAIAboutText, rewordText } from "../../Data/aiMock";
 import { Input } from "../ui/FormControls";
 import Button from "../ui/Button";
+import LoadingDots from "../ui/LoadingDots";
 
 // allowApply controls whether a "reword" response can be applied back
 // into the source document. HR's editor passes allowApply — employees
@@ -55,7 +56,7 @@ function AIResponsePanel({
           onChange={(e) => setInput(e.target.value)}
         />
         <Button variant="primary" disabled={loading}>
-          {loading ? "Thinking..." : "Submit"}
+          {loading ? <LoadingDots /> : "Submit"}
         </Button>
       </form>
 

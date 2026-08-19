@@ -5,7 +5,7 @@ import TopNav from "../components/ui/TopNav";
 import Button from "../components/ui/Button";
 import Tag from "../components/ui/Tag";
 import AskPolicyPanel from "../components/intern/AskPolicyPanel";
-import { getAssignmentsForEmployee, roleLabel, MOCK_USERS } from "../Data/store";
+import { getAssignmentsForEmployee, getAssignment, roleLabel, MOCK_USERS } from "../Data/store";
 import { greeting, formattedToday, formatShortDate } from "../utils/format";
 
 const NAV_TABS = [
@@ -34,9 +34,7 @@ function EmployeeDashboard({ user, onLogout }) {
 
   function handleSigned() {
     forceRefresh((n) => n + 1);
-    setSelectedAssignment((prev) =>
-      prev ? { ...prev, status: "signed", signedAt: new Date().toISOString() } : prev
-    );
+    setSelectedAssignment((prev) => (prev ? getAssignment(prev.id) : prev));
   }
 
   return (
