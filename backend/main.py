@@ -35,6 +35,7 @@ from training_agent import generate_metadata as generate_training_metadata, Trai
 from incident_policy_agent import draft_from_incident, IncidentPolicyAgentError
 from demo_login_db import init_demo_db
 from demo_login_repository import get_user_by_email
+from questionnaire_agent import generate_questions, QuestionnaireAgentError
 
 
 # --------------------------------------------------
@@ -260,6 +261,21 @@ class DemoLoginRequest(BaseModel):
 
         if not value:
             raise ValueError("email cannot be blank.")
+
+        return value
+
+
+class GenerateQuestionsRequest(BaseModel):
+    title: str = Field(..., min_length=2, max_length=150)
+    policy_type: str | None = Field(default=None, max_length=100)
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str):
+        value = value.strip()
+
+        if not value:
+            raise ValueError("title cannot be blank.")
 
         return value
 
@@ -1183,3 +1199,36 @@ def draft_policy_from_incident_endpoint(
         "policy": content,
         "further_reading": get_reference_links(draft["title"]),
     }
+
+
+# --------------------------------------------------
+# Agentic Questionnaire
+#
+# Replaces the frontend's static, generic Custom Section questions
+# (Frontend/src/Data/policyTemplates.js's `custom` entry) with ones
+# tailored to whatever the HR person actually typed as a title - e.g.
+# "Office Pet Policy" gets asked about pet types and approval, not a
+# generic "what is the purpose of this section?".
+# --------------------------------------------------
+
+@app.post(
+    "/questionnaire/generate",
+    tags=["AI Policies"],
+    summary="Generate tailored questionnaire fields for a policy section title",
+)
+def generate_questionnaire_endpoint(
+    request: GenerateQuestionsRequest,
+    user=Depends(require_role("HR")),
+):
+    try:
+        questions = generate_questions(request.title, request.policy_type)
+    except QuestionnaireAgentError as e:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Couldn't generate tailored questions for this title ({e}). "
+                f"Use the generic questionnaire fields instead."
+            ),
+        )
+
+    return {"questions": questions}

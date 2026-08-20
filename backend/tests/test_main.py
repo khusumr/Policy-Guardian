@@ -10,6 +10,7 @@ from main import app
 from document_parser import UnsupportedFileTypeError
 from training_agent import TrainingAgentError
 from incident_policy_agent import IncidentPolicyAgentError
+from questionnaire_agent import QuestionnaireAgentError
 from auth import get_current_user, CurrentUser
 
 
@@ -1562,3 +1563,73 @@ def test_draft_policy_from_incident_blank_summary_returns_422():
     )
 
     assert response.status_code == 422
+
+
+# --------------------------------------------------
+# Agentic Questionnaire
+# --------------------------------------------------
+
+@patch("main.generate_questions")
+def test_generate_questionnaire_success(mock_generate):
+    mock_generate.return_value = [
+        {"key": "pet_types", "label": "Which pets are allowed?", "placeholder": "Dogs and cats"},
+        {"key": "approval", "label": "Who approves bringing a pet in?", "placeholder": "Direct manager"},
+    ]
+
+    response = client.post(
+        "/questionnaire/generate",
+        json={"title": "Office Pet Policy", "policy_type": "Custom Section"},
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data["questions"]) == 2
+    assert data["questions"][0]["key"] == "pet_types"
+
+    mock_generate.assert_called_once_with("Office Pet Policy", "Custom Section")
+
+
+@patch("main.generate_questions")
+def test_generate_questionnaire_without_policy_type(mock_generate):
+    mock_generate.return_value = [
+        {"key": "a", "label": "Q1?", "placeholder": "p"},
+        {"key": "b", "label": "Q2?", "placeholder": "p"},
+    ]
+
+    client.post("/questionnaire/generate", json={"title": "Office Pet Policy"})
+
+    mock_generate.assert_called_once_with("Office Pet Policy", None)
+
+
+@patch("main.generate_questions")
+def test_generate_questionnaire_agent_failure_returns_422(mock_generate):
+    mock_generate.side_effect = QuestionnaireAgentError("LLM call failed")
+
+    response = client.post(
+        "/questionnaire/generate",
+        json={"title": "Office Pet Policy"},
+    )
+
+    assert response.status_code == 422
+
+
+def test_generate_questionnaire_blank_title_returns_422():
+    response = client.post("/questionnaire/generate", json={"title": "  "})
+
+    assert response.status_code == 422
+
+
+def test_generate_questionnaire_blocks_non_hr_role():
+    app.dependency_overrides[get_current_user] = lambda: _fake_user(roles=["Manager"])
+
+    try:
+        response = client.post(
+            "/questionnaire/generate",
+            json={"title": "Office Pet Policy"},
+        )
+
+        assert response.status_code == 403
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
