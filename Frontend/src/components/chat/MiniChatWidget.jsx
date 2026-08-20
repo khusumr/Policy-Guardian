@@ -20,9 +20,18 @@ function MiniChatWidget({ title = "Chat with us", placeholder = "Ask a question.
     setInput("");
     setLoading(true);
 
-    const answer = await askChatWidget(question);
-    setMessages((prev) => [...prev, { role: "bot", text: answer }]);
-    setLoading(false);
+    try {
+      const answer = await askChatWidget(question);
+      setMessages((prev) => [...prev, { role: "bot", text: answer }]);
+    } catch (error) {
+      console.error("Chat widget failed:", error);
+      setMessages((prev) => [
+        ...prev,
+        { role: "bot", text: "Sorry, I couldn't respond just now. Please try again." },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
