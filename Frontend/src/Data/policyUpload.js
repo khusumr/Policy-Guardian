@@ -15,7 +15,7 @@ export async function extractTextFromFile(file, sectionType) {
 
   const response = await fetch(`${BACKEND_URL}/policies/${ORG_ID}/upload`, {
     method: "POST",
-    headers: authHeader ? { Authorization: authHeader } : undefined,
+    headers: authHeader || undefined,
     body: formData,
   });
 

@@ -56,7 +56,7 @@ export async function signPolicy(orgId, policyId, signedName) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(authHeader && { Authorization: authHeader }),
+      ...(authHeader || {}),
     },
     body: JSON.stringify({ signed_name: signedName }),
   });

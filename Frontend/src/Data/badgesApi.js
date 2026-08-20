@@ -66,7 +66,7 @@ export async function getBadgesForEmployee(employeeId, assignments) {
   const authHeader = await getAuthHeader();
 
   const response = await fetch(`${BACKEND_URL}/api/badges?employee_id=${encodeURIComponent(employeeId)}`, {
-    headers: authHeader ? { Authorization: authHeader } : undefined,
+    headers: authHeader || undefined,
   });
 
   if (!response.ok) {
