@@ -410,3 +410,23 @@ export function signAssignment(assignmentId, signedBy, signature = null) {
 
   return assignment;
 }
+
+// ----- Attest/Train/Adhere onboarding -----
+// A one-time compliance ritual, separate from signing individual policies
+// (see signAssignment above) — per employee, not per policy.
+
+const ONBOARDING_KEY = "app_onboarding";
+
+export function isOnboardingComplete(employeeId) {
+  const completed = read(ONBOARDING_KEY, []);
+  return completed.some((o) => o.employeeId === employeeId);
+}
+
+export function completeOnboarding(employeeId) {
+  const completed = read(ONBOARDING_KEY, []);
+
+  if (completed.some((o) => o.employeeId === employeeId)) return;
+
+  completed.push({ employeeId, completedAt: new Date().toISOString() });
+  write(ONBOARDING_KEY, completed);
+}

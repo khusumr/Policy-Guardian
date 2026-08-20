@@ -5,8 +5,16 @@ import TopNav from "../components/ui/TopNav";
 import Button from "../components/ui/Button";
 import Tag from "../components/ui/Tag";
 import PolicyBadge from "../components/badges/PolicyBadge";
+import OnboardingFlow from "../components/onboarding/OnboardingFlow";
 import AskPolicyPanel from "../components/intern/AskPolicyPanel";
-import { getAssignmentsForEmployee, getAssignment, roleLabel, MOCK_USERS } from "../Data/store";
+import {
+  getAssignmentsForEmployee,
+  getAssignment,
+  roleLabel,
+  MOCK_USERS,
+  isOnboardingComplete,
+  completeOnboarding,
+} from "../Data/store";
 import { getBadgesForEmployee } from "../Data/badgesApi";
 import { greeting, formattedToday, formatShortDate } from "../utils/format";
 
@@ -22,6 +30,8 @@ function EmployeeDashboard({ user, onLogout }) {
   // just forces a re-render to pick the change back up.
   const [, forceRefresh] = useState(0);
   const [badges, setBadges] = useState({}); // assignment id -> {badge, label, variant}
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [onboardingDone, setOnboardingDone] = useState(() => isOnboardingComplete(user));
 
   // `user` is now a real Entra display name/username (see App.jsx), not one
   // of the fake "intern1"/"manager1"-style ids MOCK_USERS and assignments
@@ -60,6 +70,12 @@ function EmployeeDashboard({ user, onLogout }) {
     loadBadges();
   }
 
+  function handleOnboardingComplete() {
+    completeOnboarding(user);
+    setOnboardingDone(true);
+    setOnboardingOpen(false);
+  }
+
   return (
     <div>
       <TopNav tabs={NAV_TABS} activeTab={view} onTabChange={setView} userName={firstName} userRole={person?.role || "employee"} onLogout={onLogout} />
@@ -87,6 +103,19 @@ function EmployeeDashboard({ user, onLogout }) {
               ? "You're all signed up. Ask the agent anything about a policy."
               : `${pendingCount} need${pendingCount === 1 ? "s" : ""} your signature. Ask the agent anything before you sign.`}
           </p>
+
+          <div className="onboarding-banner">
+            {onboardingDone ? (
+              <span className="onboarding-banner-done">✓ Onboarding complete</span>
+            ) : (
+              <>
+                <span>New here? Attest, train, and confirm you'll adhere to company policy.</span>
+                <Button variant="primary" size="sm" onClick={() => setOnboardingOpen(true)}>
+                  Complete your onboarding
+                </Button>
+              </>
+            )}
+          </div>
 
           <div style={{ display: "flex", gap: 48, alignItems: "flex-start", flexWrap: "wrap" }}>
             <div style={{ flex: "1 1 480px" }}>
@@ -138,6 +167,13 @@ function EmployeeDashboard({ user, onLogout }) {
             </div>
           </div>
         </div>
+      )}
+
+      {onboardingOpen && (
+        <OnboardingFlow
+          onComplete={handleOnboardingComplete}
+          onClose={() => setOnboardingOpen(false)}
+        />
       )}
     </div>
   );

@@ -1012,6 +1012,76 @@ textarea.input { min-height: 90px; resize: vertical; }
   margin-top: 4px;
 }
 
+
+/* ---- Popup/modal (generic centered overlay) ---- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 13, 36, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 100;
+}
+
+.modal {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 28px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+
+/* ---- Onboarding (Attest / Train / Adhere) ---- */
+
+.onboarding-progress {
+  display: flex;
+  gap: 6px;
+}
+
+.onboarding-progress-dot {
+  width: 28px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-divider);
+}
+
+.onboarding-progress-dot-active {
+  background: var(--color-accent);
+}
+
+.onboarding-body {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--color-text);
+}
+
+.onboarding-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  margin-bottom: 24px;
+  background: var(--color-primary-soft);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.onboarding-banner-done {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
 .loading-dots {
   display: inline-flex;
   gap: 4px;
