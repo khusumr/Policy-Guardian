@@ -1466,6 +1466,22 @@ textarea.input { min-height: 90px; resize: vertical; }
   color: var(--color-text);
 }
 
+.incident-report-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.incident-report-header h2 {
+  margin: 0;
+}
+
+.incident-report-header .link-button {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 .incident-report h2 + h2 {
   margin-top: 20px;
 }
