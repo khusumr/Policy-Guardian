@@ -10,6 +10,7 @@ from main import app
 from document_parser import UnsupportedFileTypeError
 from training_agent import TrainingAgentError
 from incident_policy_agent import IncidentPolicyAgentError
+from chat_agent import ChatAgentError
 from auth import get_current_user, CurrentUser
 
 
@@ -344,6 +345,48 @@ def test_demo_login_does_not_require_a_bearer_token():
     try:
         response = client.post("/demo-login", json={"email": "manager@bugbusters.demo"})
         assert response.status_code == 200
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+# --------------------------------------------------
+# Mini Chat Widget
+# --------------------------------------------------
+
+@patch("main.answer_chat_message")
+def test_chat_widget_valid_message(mock_answer):
+    mock_answer.return_value = "You can find that under the Policies tab."
+
+    response = client.post("/chat", json={"message": "Where's the PTO policy?"})
+
+    assert response.status_code == 200
+    assert response.json()["answer"] == "You can find that under the Policies tab."
+
+
+@patch("main.answer_chat_message")
+def test_chat_widget_agent_failure_returns_500(mock_answer):
+    mock_answer.side_effect = ChatAgentError("LLM call failed")
+
+    response = client.post("/chat", json={"message": "Hi"})
+
+    assert response.status_code == 500
+
+
+def test_chat_widget_blank_message_returns_422():
+    response = client.post("/chat", json={"message": "   "})
+
+    assert response.status_code == 422
+
+
+def test_chat_widget_does_not_require_a_bearer_token():
+    # Renders on the public Landing page pre-signin — must work with no
+    # Authorization header, same reasoning as demo-login above.
+    del app.dependency_overrides[get_current_user]
+
+    try:
+        with patch("main.answer_chat_message", return_value="Hi there!"):
+            response = client.post("/chat", json={"message": "Hi"})
+            assert response.status_code == 200
     finally:
         app.dependency_overrides[get_current_user] = lambda: _fake_user()
 
