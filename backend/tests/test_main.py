@@ -262,6 +262,92 @@ def test_refine_policy_openai_failure(mock_generate):
 
 
 # --------------------------------------------------
+# Ask AI
+# --------------------------------------------------
+
+@patch("main.openai_service.generate_policy")
+def test_ask_ai_valid_request(mock_generate):
+    mock_generate.return_value = "This means employees can work from home."
+
+    response = client.post(
+        "/ask-ai",
+        json={
+            "highlighted_text": "Employees may work remotely twice per week.",
+            "question": "What does this mean?",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["answer"] == "This means employees can work from home."
+
+
+def test_ask_ai_requires_authentication():
+    # ask-ai had no auth dependency at all until now — this proves the
+    # fix actually blocks an unauthenticated caller instead of just
+    # trusting the module-level test override.
+    del app.dependency_overrides[get_current_user]
+
+    try:
+        response = client.post(
+            "/ask-ai",
+            json={
+                "highlighted_text": "Employees may work remotely.",
+                "question": "What does this mean?",
+            },
+        )
+
+        assert response.status_code == 401
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+# --------------------------------------------------
+# Demo Login (fallback)
+# --------------------------------------------------
+
+def test_demo_login_known_email_returns_role():
+    response = client.post("/demo-login", json={"email": "hr@bugbusters.demo"})
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["role"] == "HR"
+    assert data["email"] == "hr@bugbusters.demo"
+
+
+def test_demo_login_is_case_insensitive():
+    response = client.post("/demo-login", json={"email": "HR@BugBusters.Demo"})
+
+    assert response.status_code == 200
+    assert response.json()["role"] == "HR"
+
+
+def test_demo_login_unknown_email_returns_404():
+    response = client.post("/demo-login", json={"email": "nobody@example.com"})
+
+    assert response.status_code == 404
+
+
+def test_demo_login_blank_email_returns_422():
+    response = client.post("/demo-login", json={"email": "   "})
+
+    assert response.status_code == 422
+
+
+def test_demo_login_does_not_require_a_bearer_token():
+    # This IS the pre-auth entry point — it must work with no Authorization
+    # header at all, unlike every other endpoint in this file.
+    del app.dependency_overrides[get_current_user]
+
+    try:
+        response = client.post("/demo-login", json={"email": "manager@bugbusters.demo"})
+        assert response.status_code == 200
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+# --------------------------------------------------
 # Policy Storage — POST /policies
 # --------------------------------------------------
 
