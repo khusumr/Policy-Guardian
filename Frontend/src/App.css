@@ -209,9 +209,6 @@ textarea.input { min-height: 90px; resize: vertical; }
   padding: 11px 13px; cursor: pointer; background: transparent; transition: all .15s ease; width: 100%;
 }
 .radio-card-selected { border-color: var(--color-accent); background: var(--color-accent-100); }
-.radio-card-wip { opacity: .55; }
-.radio-card-title { font-family: var(--font-heading); font-weight: 600; display: block; font-size: 14px; }
-.radio-card-desc { font-size: 12px; color: color-mix(in srgb, var(--color-text) 55%, transparent); }
 
 .seg { display: inline-flex; overflow: hidden; border: 1px solid var(--color-divider); border-radius: var(--radius-md); }
 .seg-opt {
@@ -337,16 +334,12 @@ textarea.input { min-height: 90px; resize: vertical; }
 .login-form-panel { padding: 60px; display: flex; flex-direction: column; justify-content: center; }
 .login-form-panel h2 { margin: 0 0 6px; font-size: 28px; }
 .login-form-lede { font-size: 16px; color: color-mix(in srgb, var(--color-text) 58%, transparent); margin: 0 0 30px; }
-.login-role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 30px; }
-.login-fields { display: flex; flex-direction: column; gap: 18px; margin-bottom: 26px; }
-.login-error { font-size: 14px; color: var(--color-accent-2-700); margin: -10px 0 16px; }
 .login-footnote { font-size: 13px; color: color-mix(in srgb, var(--color-text) 50%, transparent); margin: 16px 0 0; }
 
 @media (max-width: 900px) {
   .login-card { grid-template-columns: 1fr; max-width: 480px; min-height: 0; }
   .login-brand-panel { padding: 36px 28px; }
   .login-form-panel { padding: 36px 28px; }
-  .login-role-grid { grid-template-columns: 1fr; }
 }
 
 

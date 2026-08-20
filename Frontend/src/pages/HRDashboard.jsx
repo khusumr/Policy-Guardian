@@ -165,8 +165,8 @@ function HRDashboard({ user, onLogout }) {
         tabs={NAV_TABS}
         activeTab={view}
         onTabChange={setView}
-        userName="Dana"
-        userRole="hr"
+        userName={user}
+        userRole="HR"
         onLogout={onLogout}
       />
 
@@ -299,7 +299,7 @@ function HRDashboard({ user, onLogout }) {
           <div className="page-kicker">HR Dashboard</div>
           <div className="page-greeting-row">
             <h1>
-              {greeting()}, {user === "hr" ? "Dana" : user}
+              {greeting()}, {user}
             </h1>
             <span className="page-greeting-date">{formattedToday()}</span>
           </div>

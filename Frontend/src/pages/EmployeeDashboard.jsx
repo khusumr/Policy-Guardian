@@ -20,6 +20,12 @@ function EmployeeDashboard({ user, onLogout }) {
   // just forces a re-render to pick the change back up.
   const [, forceRefresh] = useState(0);
 
+  // `user` is now a real Entra display name/username (see App.jsx), not one
+  // of the fake "intern1"/"manager1"-style ids MOCK_USERS and assignments
+  // are keyed on. Both lookups below will find nothing for a real account —
+  // gracefully (person/assignments just come back empty, no crash), but
+  // silently. Needs real identity data from the backend to actually work;
+  // not something to fake from the frontend.
   const person = MOCK_USERS.find((u) => u.id === user);
   const firstName = person?.name || user;
   const assignments = getAssignmentsForEmployee(user);
