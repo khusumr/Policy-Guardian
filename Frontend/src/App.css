@@ -1082,6 +1082,34 @@ textarea.input { min-height: 90px; resize: vertical; }
   font-weight: 600;
 }
 
+
+/* ---- Mini chat widget (floating, embeddable) ---- */
+
+.chat-widget-button {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  z-index: 60;
+  transition: background 0.15s ease;
+}
+
+.chat-widget-button:hover {
+  background: var(--color-accent-600);
+}
+
+.chat-widget-panel {
+  z-index: 55;
+}
+
 .loading-dots {
   display: inline-flex;
   gap: 4px;

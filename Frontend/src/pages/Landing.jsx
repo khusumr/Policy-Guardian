@@ -1,5 +1,6 @@
 import heroImage from "../assets/hero.png";
 import Button from "../components/ui/Button";
+import MiniChatWidget from "../components/chat/MiniChatWidget";
 
 const FEATURES = [
   {
@@ -57,6 +58,8 @@ function Landing({ onGetStarted }) {
           </div>
         ))}
       </section>
+
+      <MiniChatWidget title="Questions before you sign in?" placeholder="Ask us anything..." />
     </div>
   );
 }
