@@ -3,6 +3,7 @@ import QuestionnaireForm from "../components/hr/QuestionnaireForm";
 import Button from "../components/ui/Button";
 import { SECTION_TEMPLATES } from "../Data/policyTemplates";
 import { createSection, roleLabel } from "../Data/store";
+import { getAuthHeader } from "../Data/authToken";
 
 function SectionGenerate({ role, sectionType, onSectionCreated }) {
   const [showForm, setShowForm] = useState(false);
@@ -17,12 +18,15 @@ function SectionGenerate({ role, sectionType, onSectionCreated }) {
           ? "Security Policy"
           : template.label;
 
+      const authHeader = await getAuthHeader();
+
       const response = await fetch(
         "https://app-ai-policy-backend.azurewebsites.net/generate-policy",
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            ...(authHeader && { Authorization: authHeader }),
           },
           body: JSON.stringify({
             company_name: "Bug Busters",

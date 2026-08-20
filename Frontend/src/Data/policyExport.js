@@ -3,18 +3,24 @@
 // and downloads it as a PDF or DOCX.
 
 import { BACKEND_URL, ORG_ID, POLICY_TYPE_MAP } from "./backendConfig";
+import { getAuthHeader } from "./authToken";
 
 // If this section has already been saved to the backend once (has a
 // backendPolicyId), PATCH it instead of POSTing a new record each time —
 // that's what actually builds real version history via GET .../history,
 // instead of leaving a trail of disconnected one-off saves.
 async function saveSectionToBackend(section) {
+  const authHeader = await getAuthHeader();
+
   if (section.backendPolicyId) {
     const response = await fetch(
       `${BACKEND_URL}/policies/${ORG_ID}/${section.backendPolicyId}`,
       {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(authHeader && { Authorization: authHeader }),
+        },
         body: JSON.stringify({
           content: section.content,
           edited_by: "HR",
@@ -36,7 +42,10 @@ async function saveSectionToBackend(section) {
 
   const response = await fetch(`${BACKEND_URL}/policies?org_id=${ORG_ID}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(authHeader && { Authorization: authHeader }),
+    },
     body: JSON.stringify({
       company_name: "Bug Busters",
       policy_type: POLICY_TYPE_MAP[section.sectionType] || "Custom Section",
@@ -54,7 +63,11 @@ async function saveSectionToBackend(section) {
 }
 
 export async function getPolicyHistory(policyId) {
-  const response = await fetch(`${BACKEND_URL}/policies/${ORG_ID}/${policyId}/history`);
+  const authHeader = await getAuthHeader();
+
+  const response = await fetch(`${BACKEND_URL}/policies/${ORG_ID}/${policyId}/history`, {
+    headers: authHeader ? { Authorization: authHeader } : undefined,
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to load version history (${response.status})`);
@@ -64,7 +77,10 @@ export async function getPolicyHistory(policyId) {
 }
 
 async function downloadBlob(url, filename) {
-  const response = await fetch(url);
+  const authHeader = await getAuthHeader();
+  const response = await fetch(url, {
+    headers: authHeader ? { Authorization: authHeader } : undefined,
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to export file (${response.status})`);

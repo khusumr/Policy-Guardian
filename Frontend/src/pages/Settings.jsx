@@ -119,7 +119,7 @@ function Settings() {
         <div className="page-kicker" style={{ marginBottom: 12 }}>Preview</div>
 
         <div style={{ border: "1px solid var(--color-divider)", borderRadius: 2, overflow: "hidden", marginBottom: 16 }}>
-          <div style={{ background: "#241a45", color: "#f3f1fa", padding: "9px 12px", fontSize: 11 }}>Bug Busters</div>
+          <div style={{ background: "#241a45", color: "#f3f1fa", padding: "9px 12px", fontSize: 11 }}>Policy Guardian</div>
           <div style={{ padding: "14px 12px", background: "#faf9fc" }}>
             <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 8, color: "#1d1633" }}>Work From Home</div>
             <div style={{ fontSize: 12, lineHeight: 1.6, color: "#1d1633b3" }}>
@@ -130,7 +130,7 @@ function Settings() {
 
         <div style={{ border: "1px solid var(--color-divider)", borderRadius: 2, overflow: "hidden", opacity: 0.9 }}>
           <div style={{ background: "#120d24", color: "#f3f1fa", padding: "9px 12px", fontSize: 11 }}>
-            Bug Busters <span style={{ color: "#b9a6ff", marginLeft: 6 }}>dark</span>
+            Policy Guardian <span style={{ color: "#b9a6ff", marginLeft: 6 }}>dark</span>
           </div>
           <div style={{ padding: "14px 12px", background: "#1a1330", color: "#e9e6f5" }}>
             <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 8 }}>Work From Home</div>

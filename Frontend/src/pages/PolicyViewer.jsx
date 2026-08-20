@@ -1,8 +1,12 @@
 import { useState } from "react";
 import Highlighter from "../components/ai/Highlighter";
 import AIResponsePanel from "../components/ai/AIResponsePanel";
-import { Input } from "../components/ui/FormControls";
+import SignatureCapture from "../components/signature/SignatureCapture";
+import SignatureDisplay from "../components/signature/SignatureDisplay";
+import LoadingDots from "../components/ui/LoadingDots";
 import { signAssignment, roleLabel } from "../Data/store";
+import { signPolicy } from "../Data/signatureApi";
+import { ORG_ID } from "../Data/backendConfig";
 
 // Jump-to-section anchors so a multi-part policy (WFH + PTO + Code of
 // Conduct, etc. all stitched together) is easy to navigate instead of
@@ -15,15 +19,37 @@ function PolicyViewer({ assignment, onSigned }) {
   const [aiMode, setAiMode] = useState(null); // null | "ask"
   const [highlightedText, setHighlightedText] = useState("");
   const [signerName, setSignerName] = useState("");
+  const [signatureMode, setSignatureMode] = useState("type"); // "type" | "draw"
+  const [drawingDataUrl, setDrawingDataUrl] = useState(null);
   const [agreed, setAgreed] = useState(false);
+  const [signing, setSigning] = useState(false);
+  const [signError, setSignError] = useState("");
 
-  const canSign = signerName.trim() && agreed;
+  const canSign =
+    signerName.trim() && agreed && (signatureMode === "type" || !!drawingDataUrl);
 
-  function handleSign(e) {
+  async function handleSign(e) {
     e.preventDefault();
-    if (!canSign) return;
-    signAssignment(assignment.id, signerName.trim());
-    onSigned();
+    if (!canSign || signing) return;
+
+    setSigning(true);
+    setSignError("");
+
+    try {
+      // Signs at the assignment level (see Data/signatureApi.js for why) —
+      // assignment.id stands in for policy_id until the bundled-vs-per-
+      // policy signing model is reconciled with the backend.
+      await signPolicy(ORG_ID, assignment.id, signerName.trim());
+      signAssignment(assignment.id, signerName.trim(), {
+        mode: signatureMode,
+        drawingDataUrl: signatureMode === "draw" ? drawingDataUrl : null,
+      });
+      onSigned();
+    } catch (err) {
+      setSignError(err.message || "Failed to save your signature. Please try again.");
+    } finally {
+      setSigning(false);
+    }
   }
 
   function handleJump(e, sectionId) {
@@ -40,10 +66,13 @@ function PolicyViewer({ assignment, onSigned }) {
         <h1>{roleLabel(assignment.role)} Policy</h1>
 
         {assignment.status === "signed" ? (
-          <p className="signed-note">
-            Signed{assignment.signedBy ? ` by ${assignment.signedBy}` : ""} on{" "}
-            {new Date(assignment.signedAt).toLocaleDateString()}
-          </p>
+          <>
+            <p className="signed-note">
+              Signed{assignment.signedBy ? ` by ${assignment.signedBy}` : ""} on{" "}
+              {new Date(assignment.signedAt).toLocaleDateString()}
+            </p>
+            <SignatureDisplay signature={assignment.signature} signedBy={assignment.signedBy} />
+          </>
         ) : (
           <p className="pending-note">Highlight any text to ask AI about it.</p>
         )}
@@ -82,13 +111,14 @@ function PolicyViewer({ assignment, onSigned }) {
 
       {assignment.status !== "signed" && (
         <form onSubmit={handleSign} className="sign-form">
-          <Input
-            placeholder="Type your full name to sign"
-            value={signerName}
-            onChange={(e) => setSignerName(e.target.value)}
-            required
-            style={{ maxWidth: 320 }}
+          <SignatureCapture
+            mode={signatureMode}
+            onModeChange={setSignatureMode}
+            typedName={signerName}
+            onTypedNameChange={setSignerName}
+            onDrawingChange={setDrawingDataUrl}
           />
+
           <label className="sign-agree">
             <input
               type="checkbox"
@@ -98,8 +128,11 @@ function PolicyViewer({ assignment, onSigned }) {
             />
             I have read and agree to this policy
           </label>
-          <button type="submit" className="sign-button" disabled={!canSign}>
-            Sign & Accept
+
+          {signError && <p className="sign-error">{signError}</p>}
+
+          <button type="submit" className="sign-button" disabled={!canSign || signing}>
+            {signing ? <LoadingDots /> : "Sign & Accept"}
           </button>
         </form>
       )}

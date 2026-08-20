@@ -1,3 +1,5 @@
+import { getAuthHeader } from "./authToken";
+
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -42,12 +44,15 @@ export async function askAIAboutText(question, highlightedText) {
 // --------------------------------------------------
 
 export async function rewordText(instruction, highlightedText) {
+  const authHeader = await getAuthHeader();
+
   const response = await fetch(
     "https://app-ai-policy-backend.azurewebsites.net/refine-policy",
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...(authHeader && { Authorization: authHeader }),
       },
       body: JSON.stringify({
         current_policy: highlightedText,

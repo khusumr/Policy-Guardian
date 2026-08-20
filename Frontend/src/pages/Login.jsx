@@ -1,114 +1,97 @@
 import { useState } from "react";
-import RadioCard from "../components/ui/RadioCard";
-import { Field, Input } from "../components/ui/FormControls";
+import { useMsal } from "@azure/msal-react";
 import Button from "../components/ui/Button";
+import { Field, Input, Select } from "../components/ui/FormControls";
+import { loginRequest } from "../authConfig";
 
-const ROLES = [
-  { key: "hr", title: "HR", description: "Full authoring + tracking", demoUser: "hr" },
-  { key: "manager", title: "Manager", description: "Team signing status", demoUser: "alice" },
-  { key: "intern", title: "Intern", description: "Read, ask, sign", demoUser: "charlie" },
-  { key: "engineer", title: "Engineer", description: "Read, ask, sign", demoUser: "ethan" },
+// Dev-only escape hatch, gated off by default (see .env.example) — real
+// Entra sign-in is blocked right now on an org-side admin-consent grant
+// that has nothing to do with this app's code (see App.jsx/authConfig.js
+// for the full story). This lets local development continue without
+// waiting on that. Never true in a deployed build.
+const DEV_MOCK_LOGIN = import.meta.env.VITE_DEV_MOCK_LOGIN === "true";
+
+const DEV_DASHBOARDS = [
+  { key: "hr", label: "HR" },
+  { key: "manager", label: "Manager" },
+  { key: "engineer", label: "Engineer" },
+  { key: "employee", label: "Employee / Intern" },
 ];
 
-// Demo credentials — swap for real auth once a backend exists.
-const USERS = {
-  hr: "hr",
-  alice: "manager1",
-  bob: "manager2",
-  charlie: "intern1",
-  david: "intern2",
-  ethan: "engineer1",
-  fiona: "intern3",
-  george: "engineer2",
-};
+function Login({ onDevSignIn }) {
+  const { instance } = useMsal();
+  const [showDev, setShowDev] = useState(false);
+  const [devName, setDevName] = useState("Dev User");
+  const [devDashboard, setDevDashboard] = useState(DEV_DASHBOARDS[0].key);
 
-function Login({ setUser }) {
-  const [role, setRole] = useState(ROLES[0].key);
-  const [username, setUsername] = useState(ROLES[0].demoUser);
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-
-  function selectRole(r) {
-    setRole(r.key);
-    setUsername(r.demoUser);
+  function login() {
+    instance.loginRedirect(loginRequest);
   }
 
-  function login(e) {
+  function handleDevSignIn(e) {
     e.preventDefault();
-
-    if (USERS[username] && password === "1234") {
-      setError("");
-      setUser(USERS[username]);
-    } else {
-      setError("Incorrect username or password.");
-    }
+    if (!devName.trim()) return;
+    onDevSignIn({ name: devName.trim(), dashboardKey: devDashboard });
   }
-
-  const activeRole = ROLES.find((r) => r.key === role);
 
   return (
     <div className="login-shell">
       <div className="login-card">
         <div className="login-brand-panel">
           <div className="login-wordmark">
-            Bug
+            Policy
             <br />
-            Busters
+            Guardian
           </div>
-          <div className="login-subtitle">Policy Pilot</div>
+          <div className="login-subtitle">AI Policy Generator</div>
           <p className="login-lede">
-            Draft, cite and circulate company policy — then track who has
-            actually signed it.
+            Sign in with your organization account — which dashboard you land on
+            depends on the role(s) assigned to you in Entra ID.
           </p>
         </div>
 
-        <form className="login-form-panel" onSubmit={login}>
+        <div className="login-form-panel">
           <h2>Sign in</h2>
-          <p className="login-form-lede">Choose the workspace you are signing in to.</p>
+          <p className="login-form-lede">
+            Use your organization's Microsoft account to continue.
+          </p>
 
-          <div className="login-role-grid">
-            {ROLES.map((r) => (
-              <RadioCard
-                key={r.key}
-                name="role"
-                value={r.key}
-                checked={role === r.key}
-                onChange={() => selectRole(r)}
-                title={r.title}
-                description={r.description}
-              />
-            ))}
-          </div>
-
-          <div className="login-fields">
-            <Field label="Username">
-              <Input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                autoComplete="username"
-              />
-            </Field>
-
-            <Field label="Password">
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-              />
-            </Field>
-          </div>
-
-          {error && <p className="login-error">{error}</p>}
-
-          <Button variant="primary" block type="submit">
-            Sign in as {activeRole.title}
+          <Button variant="primary" block onClick={login}>
+            Sign in with Microsoft
           </Button>
 
           <p className="login-footnote">
-            Single sign-on and magic links are out of scope for this demo.
+            Don't have access yet? Ask your admin to assign you a role in Entra ID.
           </p>
-        </form>
+
+          {DEV_MOCK_LOGIN && (
+            <div className="dev-login-bypass">
+              <button type="button" className="link-button" onClick={() => setShowDev((s) => !s)}>
+                {showDev ? "Hide" : "Show"} dev bypass (local only)
+              </button>
+
+              {showDev && (
+                <form onSubmit={handleDevSignIn} className="dev-login-form">
+                  <Field label="Name">
+                    <Input value={devName} onChange={(e) => setDevName(e.target.value)} />
+                  </Field>
+                  <Field label="Dashboard">
+                    <Select value={devDashboard} onChange={(e) => setDevDashboard(e.target.value)}>
+                      {DEV_DASHBOARDS.map((d) => (
+                        <option key={d.key} value={d.key}>
+                          {d.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Button variant="secondary" size="sm" block type="submit">
+                    Continue as dev user
+                  </Button>
+                </form>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ import SignedRecord from "./SignedRecord";
 import TopNav from "../components/ui/TopNav";
 import Button from "../components/ui/Button";
 import Tag from "../components/ui/Tag";
+import MiniChatWidget from "../components/chat/MiniChatWidget";
 
 import {
   getSections,
@@ -165,8 +166,8 @@ function HRDashboard({ user, onLogout }) {
         tabs={NAV_TABS}
         activeTab={view}
         onTabChange={setView}
-        userName="Dana"
-        userRole="hr"
+        userName={user}
+        userRole="HR"
         onLogout={onLogout}
       />
 
@@ -299,7 +300,7 @@ function HRDashboard({ user, onLogout }) {
           <div className="page-kicker">HR Dashboard</div>
           <div className="page-greeting-row">
             <h1>
-              {greeting()}, {user === "hr" ? "Dana" : user}
+              {greeting()}, {user}
             </h1>
             <span className="page-greeting-date">{formattedToday()}</span>
           </div>
@@ -420,6 +421,8 @@ function HRDashboard({ user, onLogout }) {
           </div>
         </div>
       )}
+
+      <MiniChatWidget title="Ask Policy Guardian" placeholder="Ask a question..." />
     </div>
   );
 }

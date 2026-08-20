@@ -1,4 +1,5 @@
 import Button from "../components/ui/Button";
+import SignatureDisplay from "../components/signature/SignatureDisplay";
 import { roleLabel } from "../Data/store";
 
 // A permanent, read-only record of one signature: who signed, when, and
@@ -16,10 +17,13 @@ function SignedRecord({ assignment, employeeName, onBack }) {
         <h1>{roleLabel(assignment.role)} Policy — Signed Record</h1>
 
         {assignment.status === "signed" ? (
-          <p className="signed-note">
-            Signed by {assignment.signedBy || employeeName} on{" "}
-            {new Date(assignment.signedAt).toLocaleString()}
-          </p>
+          <>
+            <p className="signed-note">
+              Signed by {assignment.signedBy || employeeName} on{" "}
+              {new Date(assignment.signedAt).toLocaleString()}
+            </p>
+            <SignatureDisplay signature={assignment.signature} signedBy={assignment.signedBy} />
+          </>
         ) : (
           <p className="pending-note">
             {employeeName} has not signed this policy yet.
