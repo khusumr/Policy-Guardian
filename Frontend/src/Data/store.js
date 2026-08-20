@@ -390,7 +390,9 @@ export function savePrefs(prefs) {
   return prefs;
 }
 
-export function signAssignment(assignmentId, signedBy) {
+// signature is optional — { mode: "type" | "draw", drawingDataUrl } — so
+// existing callers that only ever passed a typed name still work.
+export function signAssignment(assignmentId, signedBy, signature = null) {
   const assignments = getAssignments();
 
   const assignment = assignments.find(
@@ -401,6 +403,7 @@ export function signAssignment(assignmentId, signedBy) {
     assignment.status = "signed";
     assignment.signedAt = new Date().toISOString();
     assignment.signedBy = signedBy;
+    assignment.signature = signature;
 
     write(ASSIGNMENTS_KEY, assignments);
   }

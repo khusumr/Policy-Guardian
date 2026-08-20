@@ -5,7 +5,7 @@
    so every existing screen picks up the rebrand without a rewrite.
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:wght@400;600&family=Caveat:wght@600&display=swap');
 
 :root {
   /* Main surfaces */
@@ -944,6 +944,72 @@ textarea.input { min-height: 90px; resize: vertical; }
 .sign-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.sign-error {
+  color: var(--color-danger);
+  font-size: 14px;
+}
+
+
+/* ---- Signature capture (draw/type) ---- */
+
+.signature-capture {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 480px;
+}
+
+.signature-draw-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.signature-preview {
+  font-family: "Caveat", cursive;
+  font-size: 40px;
+  line-height: 1;
+  color: var(--ink);
+  padding: 10px 4px 4px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.signature-canvas {
+  width: 100%;
+  height: 140px;
+  border: 1px dashed var(--color-divider);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.signature-draw-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.signature-draw-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.signature-display-image {
+  display: block;
+  max-width: 280px;
+  max-height: 90px;
+  margin-top: 6px;
+}
+
+.signature-display-typed {
+  font-family: "Caveat", cursive;
+  font-size: 32px;
+  line-height: 1;
+  color: var(--ink);
+  margin-top: 4px;
 }
 
 .loading-dots {
