@@ -5,6 +5,7 @@ import Button from "../components/ui/Button";
 import LoadingDots from "../components/ui/LoadingDots";
 import { createSection, roleLabel } from "../Data/store";
 import { BACKEND_URL } from "../Data/backendConfig";
+import { getAuthHeader } from "../Data/authToken";
 
 const API_BASE = BACKEND_URL;
 
@@ -37,9 +38,14 @@ function PolicyChatCreate({ role, onSectionCreated, onCancel }) {
     setSending(true);
 
     try {
+      const authHeader = await getAuthHeader();
+
       const response = await fetch(`${API_BASE}/policy-chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(authHeader || {}),
+        },
         body: JSON.stringify({
           messages: nextMessages.map((m) => ({ role: m.role, text: m.text })),
         }),
@@ -74,13 +80,18 @@ function PolicyChatCreate({ role, onSectionCreated, onCancel }) {
     setGenerating(true);
     try {
       const requirements = messages.filter((m) => m.role === "user").map((m) => m.text);
+      const authHeader = await getAuthHeader();
 
       const response = await fetch(`${API_BASE}/generate-policy`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(authHeader || {}),
+        },
         body: JSON.stringify({
           company_name: "Bug Busters",
-          policy_type: title,
+          policy_type: "Custom Section",
+          title,
           tone,
           requirements,
         }),
