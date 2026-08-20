@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PolicyViewer from "./PolicyViewer";
 import Settings from "./Settings";
 import TopNav from "../components/ui/TopNav";
 import Button from "../components/ui/Button";
 import Tag from "../components/ui/Tag";
+import PolicyBadge from "../components/badges/PolicyBadge";
 import AskPolicyPanel from "../components/intern/AskPolicyPanel";
 import { getAssignmentsForEmployee, getAssignment, roleLabel, MOCK_USERS } from "../Data/store";
+import { getBadgesForEmployee } from "../Data/badgesApi";
 import { greeting, formattedToday, formatShortDate } from "../utils/format";
 
 const NAV_TABS = [
@@ -19,6 +21,7 @@ function EmployeeDashboard({ user, onLogout }) {
   // Signing a policy mutates the store (localStorage) directly, so this
   // just forces a re-render to pick the change back up.
   const [, forceRefresh] = useState(0);
+  const [badges, setBadges] = useState({}); // assignment id -> {badge, label, variant}
 
   // `user` is now a real Entra display name/username (see App.jsx), not one
   // of the fake "intern1"/"manager1"-style ids MOCK_USERS and assignments
@@ -29,6 +32,19 @@ function EmployeeDashboard({ user, onLogout }) {
   const person = MOCK_USERS.find((u) => u.id === user);
   const firstName = person?.name || user;
   const assignments = getAssignmentsForEmployee(user);
+
+  function loadBadges() {
+    getBadgesForEmployee(user, getAssignmentsForEmployee(user)).then((data) => {
+      setBadges(Object.fromEntries(data.map((b) => [b.policy_id, b])));
+    });
+  }
+
+  // Fetches once per mount rather than reactively on `assignments` — that
+  // array gets a new reference every render (getAssignmentsForEmployee
+  // isn't memoized), so watching it directly would refetch in a loop.
+  // handleSigned below re-triggers this explicitly instead, same pattern
+  // as forceRefresh already uses for "something in the store changed".
+  useEffect(loadBadges, [user]);
   const pendingCount = assignments.filter((a) => a.status !== "signed").length;
   const policyContext = assignments
     .map(
@@ -41,6 +57,7 @@ function EmployeeDashboard({ user, onLogout }) {
   function handleSigned() {
     forceRefresh((n) => n + 1);
     setSelectedAssignment((prev) => (prev ? getAssignment(prev.id) : prev));
+    loadBadges();
   }
 
   return (
@@ -80,6 +97,7 @@ function EmployeeDashboard({ user, onLogout }) {
                   <thead>
                     <tr>
                       <th>Policy</th>
+                      <th>Badge</th>
                       <th>Sections</th>
                       <th>Sent</th>
                       <th style={{ textAlign: "right" }}>Action</th>
@@ -89,6 +107,9 @@ function EmployeeDashboard({ user, onLogout }) {
                     {assignments.map((a) => (
                       <tr key={a.id}>
                         <td data-label="Policy" style={{ fontWeight: 600 }}>{roleLabel(a.role)}</td>
+                        <td data-label="Badge">
+                          {badges[a.id] && <PolicyBadge {...badges[a.id]} />}
+                        </td>
                         <td data-label="Sections">{a.parts.length}</td>
                         <td data-label="Sent">{formatShortDate(a.sentAt)}</td>
                         <td data-label="Action" style={{ textAlign: "right" }}>
