@@ -1,3 +1,5 @@
+import { BACKEND_URL } from "./backendConfig";
+
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -14,7 +16,7 @@ function trim(text, max = 120) {
 
 export async function askAIAboutText(question, highlightedText) {
   const response = await fetch(
-    "https://app-ai-policy-backend.azurewebsites.net/ask-ai",
+    `${BACKEND_URL}/ask-ai`,
     {
       method: "POST",
       headers: {
@@ -43,7 +45,7 @@ export async function askAIAboutText(question, highlightedText) {
 
 export async function rewordText(instruction, highlightedText) {
   const response = await fetch(
-    "https://app-ai-policy-backend.azurewebsites.net/refine-policy",
+    `${BACKEND_URL}/refine-policy`,
     {
       method: "POST",
       headers: {

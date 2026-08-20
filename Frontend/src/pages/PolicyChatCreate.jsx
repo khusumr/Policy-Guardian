@@ -4,8 +4,9 @@ import { Input, Select } from "../components/ui/FormControls";
 import Button from "../components/ui/Button";
 import LoadingDots from "../components/ui/LoadingDots";
 import { createSection, roleLabel } from "../Data/store";
+import { BACKEND_URL } from "../Data/backendConfig";
 
-const API_BASE = "https://app-ai-policy-backend.azurewebsites.net";
+const API_BASE = BACKEND_URL;
 
 // Agentic policy-section creation: HR describes what they want in one
 // box and the assistant asks follow-up questions conversationally,
@@ -13,7 +14,7 @@ const API_BASE = "https://app-ai-policy-backend.azurewebsites.net";
 // of Conduct, etc.). Reuses the incident-chat layout/CSS classes since
 // the shape (chat on the left, generated output on the right) is the
 // same interaction.
-function PolicyChatCreate({ role, onSectionCreated }) {
+function PolicyChatCreate({ role, onSectionCreated, onCancel }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -113,6 +114,11 @@ function PolicyChatCreate({ role, onSectionCreated }) {
 
   return (
     <div className="incident-page">
+      {onCancel && (
+        <button className="link-button" onClick={onCancel} style={{ marginBottom: 8 }}>
+          ← Back to Policies
+        </button>
+      )}
       <h1>New Policy Section</h1>
       <p className="editor-hint">
         Describe what you want this section to cover for {roleLabel(role)} — the assistant will

@@ -390,6 +390,51 @@ export function savePrefs(prefs) {
   return prefs;
 }
 
+// ----- Tickets -----
+// Lightweight mock ticket system: manager feedback and signature
+// reminders land here for HR, and applying feedback logs a
+// "policy_updated" ticket standing in for a real email notification
+// until the real ticketing/email backend (#9) exists.
+
+const TICKETS_KEY = "app_tickets";
+
+export function getTickets() {
+  return read(TICKETS_KEY, []);
+}
+
+export function createTicket({ type, role, title, body }) {
+  const tickets = getTickets();
+
+  const ticket = {
+    id: `ticket_${Date.now()}`,
+    type, // "feedback" | "reminder" | "policy_updated"
+    role: role || null,
+    title,
+    body,
+    status: "open",
+    createdAt: new Date().toISOString(),
+    resolvedAt: null,
+  };
+
+  tickets.push(ticket);
+  write(TICKETS_KEY, tickets);
+
+  return ticket;
+}
+
+export function resolveTicket(id) {
+  const tickets = getTickets();
+  const ticket = tickets.find((t) => t.id === id);
+
+  if (ticket) {
+    ticket.status = "resolved";
+    ticket.resolvedAt = new Date().toISOString();
+    write(TICKETS_KEY, tickets);
+  }
+
+  return ticket;
+}
+
 export function signAssignment(assignmentId, signedBy) {
   const assignments = getAssignments();
 

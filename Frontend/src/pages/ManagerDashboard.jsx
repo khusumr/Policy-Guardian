@@ -14,6 +14,7 @@ import {
   getAllRoles,
   getSectionsByRole,
   sendRoleToEmployees,
+  createTicket,
   roleLabel,
 } from "../Data/store";
 import { greeting, formattedToday, formatShortDate } from "../utils/format";
@@ -79,6 +80,15 @@ function ManagerDashboard({ user, onLogout }) {
   });
 
   function handleSendReminder() {
+    createTicket({
+      type: "reminder",
+      role: null,
+      title: `Reminder: ${pendingMembers.length} pending signature${pendingMembers.length === 1 ? "" : "s"}`,
+      body: `${manager?.name || "A manager"} requested a nudge for: ${pendingMembers
+        .map((m) => m.name)
+        .join(", ")}.`,
+    });
+
     setReminderNote(
       `Reminder sent to ${pendingMembers.length} report${pendingMembers.length === 1 ? "" : "s"} with a pending signature.`
     );
@@ -113,7 +123,7 @@ function ManagerDashboard({ user, onLogout }) {
           <Button variant="secondary" size="sm" onClick={() => setSelectedAssignment(null)} style={{ marginBottom: 16 }}>
             ← Back
           </Button>
-          <PolicyViewer assignment={selectedAssignment} onSigned={handleSigned} />
+          <PolicyViewer assignment={selectedAssignment} onSigned={handleSigned} allowFeedback />
         </div>
       ) : (
         <div className="content">

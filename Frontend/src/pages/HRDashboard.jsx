@@ -7,6 +7,7 @@ import UploadPolicyForm from "./UploadPolicyForm";
 import Settings from "./Settings";
 import PolicyLibrary from "./PolicyLibrary";
 import SignedRecord from "./SignedRecord";
+import Tickets from "./Tickets";
 import TopNav from "../components/ui/TopNav";
 import Button from "../components/ui/Button";
 import Tag from "../components/ui/Tag";
@@ -21,16 +22,10 @@ import {
   getMockTeam,
   getExpirationInfo,
   getAllRoles,
+  getTickets,
   roleLabel,
 } from "../Data/store";
 import { greeting, formattedToday, formatShortDate, relativeTime } from "../utils/format";
-
-const NAV_TABS = [
-  { key: "home", label: "Home" },
-  { key: "policies", label: "Policies" },
-  { key: "teams", label: "Teams" },
-  { key: "settings", label: "Settings" },
-];
 
 function getEmployeeStatus(employeeId) {
   const assignments = getAssignmentsForEmployee(employeeId);
@@ -70,7 +65,7 @@ function RoleActionRow({ label, actionLabel, onStart }) {
 }
 
 function HRDashboard({ user, onLogout }) {
-  const [view, setView] = useState("home"); // "home" | "policies" | "settings"
+  const [view, setView] = useState("home"); // "home" | "policies" | "tickets" | "teams" | "settings"
   const [sections, setSections] = useState(getSections());
   const [page, setPage] = useState("home");
   const [selectedSection, setSelectedSection] = useState(null);
@@ -90,6 +85,10 @@ function HRDashboard({ user, onLogout }) {
 
   function goToPolicies() {
     setView("policies");
+  }
+
+  function handleBackToLibrary() {
+    setPage(null);
   }
 
   function handleSelectSection(section) {
@@ -158,10 +157,22 @@ function HRDashboard({ user, onLogout }) {
     .sort((a, b) => new Date(b.at) - new Date(a.at))
     .slice(0, 3);
 
+  const openTicketCount = getTickets().filter(
+    (t) => t.status === "open" && t.type !== "policy_updated"
+  ).length;
+
+  const navTabs = [
+    { key: "home", label: "Home" },
+    { key: "policies", label: "Policies" },
+    { key: "tickets", label: openTicketCount > 0 ? `Tickets (${openTicketCount})` : "Tickets" },
+    { key: "teams", label: "Teams" },
+    { key: "settings", label: "Settings" },
+  ];
+
   return (
     <div>
       <TopNav
-        tabs={NAV_TABS}
+        tabs={navTabs}
         activeTab={view}
         onTabChange={setView}
         userName="Dana"
@@ -191,14 +202,28 @@ function HRDashboard({ user, onLogout }) {
               onAddSection={handleStartNewSection}
             />
           ) : page === "newSection" && newSectionRole ? (
-            <PolicyChatCreate key={newSectionRole} role={newSectionRole} onSectionCreated={handleSectionCreated} />
+            <PolicyChatCreate
+              key={newSectionRole}
+              role={newSectionRole}
+              onSectionCreated={handleSectionCreated}
+              onCancel={handleBackToLibrary}
+            />
           ) : page === "upload" && uploadRole ? (
-            <UploadPolicyForm key={uploadRole} role={uploadRole} onSectionCreated={handleSectionCreated} />
+            <UploadPolicyForm
+              key={uploadRole}
+              role={uploadRole}
+              onSectionCreated={handleSectionCreated}
+              onCancel={handleBackToLibrary}
+            />
           ) : page === "incident" ? (
-            <IncidentReport />
+            <IncidentReport onCancel={handleBackToLibrary} />
           ) : (
             <PolicyLibrary onOpenRole={handleSelectOverall} />
           )}
+        </div>
+      ) : view === "tickets" ? (
+        <div className="content">
+          <Tickets />
         </div>
       ) : view === "teams" ? (
         <div className="content">

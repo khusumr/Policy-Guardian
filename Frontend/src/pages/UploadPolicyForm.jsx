@@ -13,7 +13,7 @@ import { extractTextFromFile } from "../Data/policyUpload";
 
 const TEXT_EXTENSIONS = [".txt", ".md"];
 
-function UploadPolicyForm({ role, onSectionCreated }) {
+function UploadPolicyForm({ role, onSectionCreated, onCancel }) {
   const [fileName, setFileName] = useState("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -67,6 +67,11 @@ function UploadPolicyForm({ role, onSectionCreated }) {
 
   return (
     <div className="questionnaire-page">
+      {onCancel && (
+        <button className="link-button" onClick={onCancel} style={{ marginBottom: 8 }}>
+          ← Back to Policies
+        </button>
+      )}
       <h1>Upload Existing Policy</h1>
       <p className="editor-hint">
         {roleLabel(role)} · Upload a .pdf, .docx, .txt, or .md policy document to bring it into
