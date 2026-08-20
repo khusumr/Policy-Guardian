@@ -23,10 +23,13 @@
 //    is a coordination item for whoever owns the bundling model, not
 //    resolved here.
 //
-// USE_MOCKS is on since the real endpoint isn't merged to main yet, and
-// even once it is, calling it needs an Authorization: Bearer <token> the
-// frontend doesn't acquire yet (see authConfig.js's note on the missing
-// "Expose an API" scope). Flip USE_MOCKS once both of those are sorted.
+// USE_MOCKS is on since the real endpoint isn't merged to main yet. The
+// auth gap noted above is resolved though — Data/authToken.js sends the
+// ID token as the Bearer token, which backend/auth.py accepts (it
+// validates generically, doesn't require a separate access-token scope).
+// Flip USE_MOCKS once the endpoint itself is live.
+
+import { getAuthHeader } from "./authToken";
 
 const USE_MOCKS = true;
 const BACKEND_URL = "https://app-ai-policy-backend.azurewebsites.net";
@@ -47,9 +50,14 @@ export async function signPolicy(orgId, policyId, signedName) {
     };
   }
 
+  const authHeader = await getAuthHeader();
+
   const response = await fetch(`${BACKEND_URL}/policies/${orgId}/${policyId}/sign`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(authHeader && { Authorization: authHeader }),
+    },
     body: JSON.stringify({ signed_name: signedName }),
   });
 

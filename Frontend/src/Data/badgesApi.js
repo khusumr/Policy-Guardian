@@ -16,6 +16,8 @@
 // once a review-cycle deadline has passed unsigned, "due_soon" as that
 // deadline approaches, "new" otherwise.
 
+import { getAuthHeader } from "./authToken";
+
 const USE_MOCKS = true;
 const BACKEND_URL = "https://app-ai-policy-backend.azurewebsites.net"; // placeholder, unconfirmed
 
@@ -61,7 +63,11 @@ export async function getBadgesForEmployee(employeeId, assignments) {
     return assignments.map((a) => ({ policy_id: a.id, ...computeBadge(a) }));
   }
 
-  const response = await fetch(`${BACKEND_URL}/api/badges?employee_id=${encodeURIComponent(employeeId)}`);
+  const authHeader = await getAuthHeader();
+
+  const response = await fetch(`${BACKEND_URL}/api/badges?employee_id=${encodeURIComponent(employeeId)}`, {
+    headers: authHeader ? { Authorization: authHeader } : undefined,
+  });
 
   if (!response.ok) {
     throw new Error(`Backend returned ${response.status}`);

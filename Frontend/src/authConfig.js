@@ -30,16 +30,16 @@ export const msalConfig = {
 };
 
 // Scopes for the initial sign-in. "openid" and "profile" are enough to get
-// the roles claim onto the ID token — but ONLY because app roles are
-// defined on this same app registration (confirmed: the backend's
-// ENTRA_CLIENT_ID matches this app's clientId, rather than a separate API
-// app registration — see backend/auth.py, which validates an access token
-// audienced to this same client id). If the frontend starts sending real
-// Authorization: Bearer <token> headers to the backend (it doesn't yet),
-// an access token audienced to this app is needed instead, which requires
-// a scope from "Expose an API" on the app registration
-// (e.g. api://<client-id>/access_as_user) — not confirmed configured as of
-// writing. Flagging rather than guessing a scope string that may not exist.
+// the roles claim onto the ID token, because app roles are defined on this
+// same app registration (confirmed: the backend's ENTRA_CLIENT_ID matches
+// this app's clientId, rather than a separate API app registration).
+//
+// These same scopes are reused by Data/authToken.js's acquireTokenSilent
+// to get a token for real backend calls — the ID token itself is sent as
+// the Bearer token, not a separate access token. backend/auth.py validates
+// generically (signature/audience/issuer) without checking whether it's an
+// ID token or an access token, so this works without needing a scope from
+// "Expose an API" on the app registration, which isn't configured.
 export const loginRequest = {
   scopes: ["openid", "profile"],
 };
