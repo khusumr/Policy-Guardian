@@ -435,7 +435,9 @@ export function resolveTicket(id) {
   return ticket;
 }
 
-export function signAssignment(assignmentId, signedBy) {
+// signature is optional — { mode: "type" | "draw", drawingDataUrl } — so
+// existing callers that only ever passed a typed name still work.
+export function signAssignment(assignmentId, signedBy, signature = null) {
   const assignments = getAssignments();
 
   const assignment = assignments.find(
@@ -446,9 +448,30 @@ export function signAssignment(assignmentId, signedBy) {
     assignment.status = "signed";
     assignment.signedAt = new Date().toISOString();
     assignment.signedBy = signedBy;
+    assignment.signature = signature;
 
     write(ASSIGNMENTS_KEY, assignments);
   }
 
   return assignment;
+}
+
+// ----- Attest/Train/Adhere onboarding -----
+// A one-time compliance ritual, separate from signing individual policies
+// (see signAssignment above) — per employee, not per policy.
+
+const ONBOARDING_KEY = "app_onboarding";
+
+export function isOnboardingComplete(employeeId) {
+  const completed = read(ONBOARDING_KEY, []);
+  return completed.some((o) => o.employeeId === employeeId);
+}
+
+export function completeOnboarding(employeeId) {
+  const completed = read(ONBOARDING_KEY, []);
+
+  if (completed.some((o) => o.employeeId === employeeId)) return;
+
+  completed.push({ employeeId, completedAt: new Date().toISOString() });
+  write(ONBOARDING_KEY, completed);
 }

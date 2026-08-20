@@ -1,4 +1,5 @@
 import { BACKEND_URL } from "./backendConfig";
+import { getAuthHeader } from "./authToken";
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -15,12 +16,15 @@ function trim(text, max = 120) {
 // --------------------------------------------------
 
 export async function askAIAboutText(question, highlightedText) {
+  const authHeader = await getAuthHeader();
+
   const response = await fetch(
     `${BACKEND_URL}/ask-ai`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...(authHeader || {}),
       },
       body: JSON.stringify({
         highlighted_text: highlightedText,
@@ -44,12 +48,15 @@ export async function askAIAboutText(question, highlightedText) {
 // --------------------------------------------------
 
 export async function rewordText(instruction, highlightedText) {
+  const authHeader = await getAuthHeader();
+
   const response = await fetch(
     `${BACKEND_URL}/refine-policy`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...(authHeader || {}),
       },
       body: JSON.stringify({
         current_policy: highlightedText,

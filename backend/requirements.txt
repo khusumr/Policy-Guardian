@@ -12,4 +12,3 @@ python-docx
 reportlab
 pypdf
 python-multipart
-pyjwt[crypto]

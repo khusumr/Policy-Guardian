@@ -1,11 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PolicyViewer from "./PolicyViewer";
 import Settings from "./Settings";
 import TopNav from "../components/ui/TopNav";
 import Button from "../components/ui/Button";
 import Tag from "../components/ui/Tag";
+import PolicyBadge from "../components/badges/PolicyBadge";
+import OnboardingFlow from "../components/onboarding/OnboardingFlow";
 import AskPolicyPanel from "../components/intern/AskPolicyPanel";
-import { getAssignmentsForEmployee, getAssignment, roleLabel, MOCK_USERS } from "../Data/store";
+import {
+  getAssignmentsForEmployee,
+  getAssignment,
+  roleLabel,
+  MOCK_USERS,
+  isOnboardingComplete,
+  completeOnboarding,
+} from "../Data/store";
+import { getBadgesForEmployee } from "../Data/badgesApi";
 import { greeting, formattedToday, formatShortDate } from "../utils/format";
 
 const NAV_TABS = [
@@ -19,10 +29,32 @@ function EmployeeDashboard({ user, onLogout }) {
   // Signing a policy mutates the store (localStorage) directly, so this
   // just forces a re-render to pick the change back up.
   const [, forceRefresh] = useState(0);
+  const [badges, setBadges] = useState({}); // assignment id -> {badge, label, variant}
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [onboardingDone, setOnboardingDone] = useState(() => isOnboardingComplete(user));
 
+  // `user` is now a real Entra display name/username (see App.jsx), not one
+  // of the fake "intern1"/"manager1"-style ids MOCK_USERS and assignments
+  // are keyed on. Both lookups below will find nothing for a real account —
+  // gracefully (person/assignments just come back empty, no crash), but
+  // silently. Needs real identity data from the backend to actually work;
+  // not something to fake from the frontend.
   const person = MOCK_USERS.find((u) => u.id === user);
   const firstName = person?.name || user;
   const assignments = getAssignmentsForEmployee(user);
+
+  function loadBadges() {
+    getBadgesForEmployee(user, getAssignmentsForEmployee(user)).then((data) => {
+      setBadges(Object.fromEntries(data.map((b) => [b.policy_id, b])));
+    });
+  }
+
+  // Fetches once per mount rather than reactively on `assignments` — that
+  // array gets a new reference every render (getAssignmentsForEmployee
+  // isn't memoized), so watching it directly would refetch in a loop.
+  // handleSigned below re-triggers this explicitly instead, same pattern
+  // as forceRefresh already uses for "something in the store changed".
+  useEffect(loadBadges, [user]);
   const pendingCount = assignments.filter((a) => a.status !== "signed").length;
   const policyContext = assignments
     .map(
@@ -35,6 +67,13 @@ function EmployeeDashboard({ user, onLogout }) {
   function handleSigned() {
     forceRefresh((n) => n + 1);
     setSelectedAssignment((prev) => (prev ? getAssignment(prev.id) : prev));
+    loadBadges();
+  }
+
+  function handleOnboardingComplete() {
+    completeOnboarding(user);
+    setOnboardingDone(true);
+    setOnboardingOpen(false);
   }
 
   return (
@@ -65,6 +104,19 @@ function EmployeeDashboard({ user, onLogout }) {
               : `${pendingCount} need${pendingCount === 1 ? "s" : ""} your signature. Ask the agent anything before you sign.`}
           </p>
 
+          <div className="onboarding-banner">
+            {onboardingDone ? (
+              <span className="onboarding-banner-done">✓ Onboarding complete</span>
+            ) : (
+              <>
+                <span>New here? Attest, train, and confirm you'll adhere to company policy.</span>
+                <Button variant="primary" size="sm" onClick={() => setOnboardingOpen(true)}>
+                  Complete your onboarding
+                </Button>
+              </>
+            )}
+          </div>
+
           <div style={{ display: "flex", gap: 48, alignItems: "flex-start", flexWrap: "wrap" }}>
             <div style={{ flex: "1 1 480px" }}>
               {assignments.length === 0 ? (
@@ -74,6 +126,7 @@ function EmployeeDashboard({ user, onLogout }) {
                   <thead>
                     <tr>
                       <th>Policy</th>
+                      <th>Badge</th>
                       <th>Sections</th>
                       <th>Sent</th>
                       <th style={{ textAlign: "right" }}>Action</th>
@@ -83,6 +136,9 @@ function EmployeeDashboard({ user, onLogout }) {
                     {assignments.map((a) => (
                       <tr key={a.id}>
                         <td data-label="Policy" style={{ fontWeight: 600 }}>{roleLabel(a.role)}</td>
+                        <td data-label="Badge">
+                          {badges[a.id] && <PolicyBadge {...badges[a.id]} />}
+                        </td>
                         <td data-label="Sections">{a.parts.length}</td>
                         <td data-label="Sent">{formatShortDate(a.sentAt)}</td>
                         <td data-label="Action" style={{ textAlign: "right" }}>
@@ -111,6 +167,13 @@ function EmployeeDashboard({ user, onLogout }) {
             </div>
           </div>
         </div>
+      )}
+
+      {onboardingOpen && (
+        <OnboardingFlow
+          onComplete={handleOnboardingComplete}
+          onClose={() => setOnboardingOpen(false)}
+        />
       )}
     </div>
   );

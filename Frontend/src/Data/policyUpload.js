@@ -3,6 +3,7 @@
 // UploadPolicyForm reads those directly in the browser.)
 
 import { BACKEND_URL, ORG_ID, POLICY_TYPE_MAP } from "./backendConfig";
+import { getAuthHeader } from "./authToken";
 
 export async function extractTextFromFile(file, sectionType) {
   const formData = new FormData();
@@ -10,8 +11,11 @@ export async function extractTextFromFile(file, sectionType) {
   formData.append("policy_type", POLICY_TYPE_MAP[sectionType] || "Custom Section");
   formData.append("file", file);
 
+  const authHeader = await getAuthHeader();
+
   const response = await fetch(`${BACKEND_URL}/policies/${ORG_ID}/upload`, {
     method: "POST",
+    headers: authHeader || undefined,
     body: formData,
   });
 

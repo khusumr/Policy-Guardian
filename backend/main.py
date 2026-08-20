@@ -31,6 +31,12 @@ from training_repository import (
     list_resources,
 )
 from adherence_repository import acknowledge, get_acknowledgment
+from training_agent import generate_metadata as generate_training_metadata, TrainingAgentError
+from incident_policy_agent import draft_from_incident, IncidentPolicyAgentError
+from demo_login_db import init_demo_db
+from demo_login_repository import get_user_by_email
+from questionnaire_agent import generate_questions, QuestionnaireAgentError
+from chat_agent import answer_chat_message, ChatAgentError
 
 
 # --------------------------------------------------
@@ -38,7 +44,7 @@ from adherence_repository import acknowledge, get_acknowledgment
 # --------------------------------------------------
 
 app = FastAPI(
-    title="Policy Pilot API",
+    title="Policy Guardian API",
     description=(
         "Backend API for generating, refining, storing, "
         "retrieving, and exporting HR policies using Azure OpenAI."
@@ -68,6 +74,10 @@ app.add_middleware(
 
 openai_service = OpenAIService()
 logger = get_logger(__name__)
+
+# Demo login fallback - see demo_login_db.py. Safe/idempotent to run on
+# every startup; only creates the table + seed rows if they don't exist.
+init_demo_db()
 
 
 # --------------------------------------------------
@@ -248,6 +258,52 @@ class AskAIRequest(BaseModel):
         return value
 
 
+class ChatMessageRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=2000)
+
+    @field_validator("message")
+    @classmethod
+    def validate_message(cls, value: str):
+        value = value.strip()
+
+        if not value:
+            raise ValueError("message cannot be blank.")
+
+        return value
+
+
+class DemoLoginRequest(BaseModel):
+    # Demo-only fallback for when real Entra login is unavailable - see
+    # demo_login_db.py. No password field on purpose: this is an email
+    # lookup, not authentication.
+    email: str = Field(..., min_length=3, max_length=200)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str):
+        value = value.strip()
+
+        if not value:
+            raise ValueError("email cannot be blank.")
+
+        return value
+
+
+class GenerateQuestionsRequest(BaseModel):
+    title: str = Field(..., min_length=2, max_length=150)
+    policy_type: str | None = Field(default=None, max_length=100)
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str):
+        value = value.strip()
+
+        if not value:
+            raise ValueError("title cannot be blank.")
+
+        return value
+
+
 class UpdatePolicyRequest(BaseModel):
     content: str = Field(..., min_length=10, max_length=20000)
     edited_by: str | None = None
@@ -281,6 +337,25 @@ class TrainingLinkRequest(BaseModel):
     url: str = Field(..., min_length=5, max_length=2000)
 
     @field_validator("title", "description", "category", "url")
+    @classmethod
+    def validate_not_blank(cls, value: str):
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Field cannot be blank.")
+
+        return value
+
+
+class DraftPolicyFromIncidentRequest(BaseModel):
+    company_name: str = Field(..., min_length=2, max_length=100)
+    incident_summary: str = Field(..., min_length=10, max_length=20000)
+    # Optional follow-up Q&A from the Incident Report Assistant, if the
+    # caller has it (see incident-assistant/'s ticket schema) — sharpens
+    # the draft without requiring it.
+    context: str | None = Field(default=None, max_length=5000)
+
+    @field_validator("company_name", "incident_summary")
     @classmethod
     def validate_not_blank(cls, value: str):
         value = value.strip()
@@ -456,7 +531,7 @@ Important rules:
     tags=["AI Policies"],
     summary="Ask AI a question about selected policy text",
 )
-def ask_ai(request: AskAIRequest):
+def ask_ai(request: AskAIRequest, user=Depends(get_current_user)):
     logger.info("Received Ask AI request")
 
     try:
@@ -496,6 +571,62 @@ Important rules:
             status_code=500,
             detail="Failed to answer question. Please try again.",
         )
+
+
+# --------------------------------------------------
+# Demo Login (fallback)
+#
+# Deliberately isolated from the real Entra/MSAL auth flow (auth.py,
+# get_current_user, require_role): no JWT, no token, no role check on
+# this endpoint itself - it exists to hand out a role, not to guard one.
+# Swap the frontend between this and real MSAL login without touching
+# either implementation. See demo_login_db.py for why SQLite / why this
+# is the only SQL table in the project.
+# --------------------------------------------------
+
+@app.post(
+    "/demo-login",
+    tags=["Demo Login"],
+    summary="Look up a demo user's role by email (no password/token check)",
+)
+def demo_login(request: DemoLoginRequest):
+    demo_user = get_user_by_email(request.email)
+
+    if demo_user is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No demo user found with that email.",
+        )
+
+    return demo_user
+
+
+# --------------------------------------------------
+# Mini Chat Widget
+#
+# No auth dependency: MiniChatWidget.jsx renders on the public Landing
+# page (no signed-in user yet) as well as HRDashboard, so this can't
+# require a role or even a token the way /ask-ai does. chat_agent.py's
+# prompt is written to not assume any org/role context accordingly.
+# --------------------------------------------------
+
+@app.post(
+    "/chat",
+    tags=["Chat Widget"],
+    summary="Answer a general question from the mini chat widget",
+)
+def chat_widget_endpoint(request: ChatMessageRequest):
+    try:
+        answer = answer_chat_message(request.message)
+    except ChatAgentError as e:
+        logger.error(f"Chat widget reply failed: {e}")
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to get a response. Please try again.",
+        )
+
+    return {"answer": answer}
 
 
 # --------------------------------------------------
@@ -986,9 +1117,13 @@ def add_training_link(
 )
 async def upload_training_file(
     org_id: str,
-    title: str = Form(...),
-    description: str = Form(...),
-    category: str = Form(...),
+    # All optional — the whole point is HR shouldn't have to type these.
+    # An agent generates whichever ones aren't provided, from the
+    # document's actual content. Still overridable per-field if HR wants
+    # to correct or skip the AI for a specific upload.
+    title: str | None = Form(default=None),
+    description: str | None = Form(default=None),
+    category: str | None = Form(default=None),
     file: UploadFile = File(...),
     user=Depends(require_role("HR")),
 ):
@@ -996,6 +1131,25 @@ async def upload_training_file(
 
     if not file_bytes:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    if not (title and description and category):
+        try:
+            extracted_text = extract_text_from_upload(file.filename, file_bytes)
+            generated = generate_training_metadata(file.filename, extracted_text)
+        except UnsupportedFileTypeError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except TrainingAgentError as e:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"Couldn't auto-generate title/description/category "
+                    f"for this file ({e}). Provide them manually instead."
+                ),
+            )
+
+        title = title or generated["title"]
+        description = description or generated["description"]
+        category = category or generated["category"]
 
     return create_file_resource(
         org_id,
@@ -1076,3 +1230,91 @@ def adherence_status(org_id: str, user=Depends(get_current_user)):
     acknowledgment = get_acknowledgment(org_id, user.object_id)
 
     return {"acknowledged": acknowledgment is not None, "acknowledgment": acknowledgment}
+
+
+# --------------------------------------------------
+# Incident-to-Policy — the "agentic" half of the incident report copy
+# button (task #7): rather than HR pasting raw incident text into the
+# custom-section form and writing the policy themselves, an agent drafts
+# a real title + requirements + generated policy content from it. This
+# is a draft only — nothing is saved until HR reviews it and calls
+# POST /policies themselves, same as any other generated policy.
+# --------------------------------------------------
+
+@app.post(
+    "/policies/{org_id}/from-incident",
+    tags=["AI Policies"],
+    summary="Draft a custom policy from an incident report (not saved)",
+)
+def draft_policy_from_incident_endpoint(
+    org_id: str,
+    request: DraftPolicyFromIncidentRequest,
+    user=Depends(require_role("HR")),
+):
+    try:
+        draft = draft_from_incident(request.incident_summary, request.context)
+    except IncidentPolicyAgentError as e:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Couldn't draft a policy from this incident ({e}). "
+                f"Use the custom section form to write one manually instead."
+            ),
+        )
+
+    try:
+        prompt = build_policy_prompt(
+            company_name=request.company_name,
+            policy_type="Custom Section",
+            tone=Tone.professional.value,
+            requirements=draft["requirements"],
+            title=draft["title"],
+        )
+        content = openai_service.generate_policy(prompt)
+    except Exception as e:
+        logger.error(f"Policy generation from incident draft failed: {e}")
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to generate policy content from the draft. Please try again.",
+        )
+
+    return {
+        "title": draft["title"],
+        "requirements": draft["requirements"],
+        "policy": content,
+        "further_reading": get_reference_links(draft["title"]),
+    }
+
+
+# --------------------------------------------------
+# Agentic Questionnaire
+#
+# Replaces the frontend's static, generic Custom Section questions
+# (Frontend/src/Data/policyTemplates.js's `custom` entry) with ones
+# tailored to whatever the HR person actually typed as a title - e.g.
+# "Office Pet Policy" gets asked about pet types and approval, not a
+# generic "what is the purpose of this section?".
+# --------------------------------------------------
+
+@app.post(
+    "/questionnaire/generate",
+    tags=["AI Policies"],
+    summary="Generate tailored questionnaire fields for a policy section title",
+)
+def generate_questionnaire_endpoint(
+    request: GenerateQuestionsRequest,
+    user=Depends(require_role("HR")),
+):
+    try:
+        questions = generate_questions(request.title, request.policy_type)
+    except QuestionnaireAgentError as e:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Couldn't generate tailored questions for this title ({e}). "
+                f"Use the generic questionnaire fields instead."
+            ),
+        )
+
+    return {"questions": questions}

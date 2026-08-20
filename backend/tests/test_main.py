@@ -8,11 +8,15 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 from fastapi.testclient import TestClient
 from main import app
 from document_parser import UnsupportedFileTypeError
+from training_agent import TrainingAgentError
+from incident_policy_agent import IncidentPolicyAgentError
+from questionnaire_agent import QuestionnaireAgentError
+from chat_agent import ChatAgentError
 from auth import get_current_user, CurrentUser
 
 
 def _fake_user(roles=("HR",)):
-    return CurrentUser({"name": "Test User", "roles": list(roles), "oid": "test-oid"})
+    return CurrentUser(object_id="test-oid", roles=list(roles), name="Test User")
 
 
 # Everything below predates role-based auth and is testing endpoint
@@ -317,6 +321,134 @@ def test_refine_policy_openai_failure(mock_generate):
     assert response.json() == {
         "detail": "Failed to refine policy. Please try again."
     }
+
+
+# --------------------------------------------------
+# Ask AI
+# --------------------------------------------------
+
+@patch("main.openai_service.generate_policy")
+def test_ask_ai_valid_request(mock_generate):
+    mock_generate.return_value = "This means employees can work from home."
+
+    response = client.post(
+        "/ask-ai",
+        json={
+            "highlighted_text": "Employees may work remotely twice per week.",
+            "question": "What does this mean?",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["answer"] == "This means employees can work from home."
+
+
+def test_ask_ai_requires_authentication():
+    # ask-ai had no auth dependency at all until now — this proves the
+    # fix actually blocks an unauthenticated caller instead of just
+    # trusting the module-level test override.
+    del app.dependency_overrides[get_current_user]
+
+    try:
+        response = client.post(
+            "/ask-ai",
+            json={
+                "highlighted_text": "Employees may work remotely.",
+                "question": "What does this mean?",
+            },
+        )
+
+        assert response.status_code == 401
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+# --------------------------------------------------
+# Demo Login (fallback)
+# --------------------------------------------------
+
+def test_demo_login_known_email_returns_role():
+    response = client.post("/demo-login", json={"email": "hr@bugbusters.demo"})
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["role"] == "HR"
+    assert data["email"] == "hr@bugbusters.demo"
+
+
+def test_demo_login_is_case_insensitive():
+    response = client.post("/demo-login", json={"email": "HR@BugBusters.Demo"})
+
+    assert response.status_code == 200
+    assert response.json()["role"] == "HR"
+
+
+def test_demo_login_unknown_email_returns_404():
+    response = client.post("/demo-login", json={"email": "nobody@example.com"})
+
+    assert response.status_code == 404
+
+
+def test_demo_login_blank_email_returns_422():
+    response = client.post("/demo-login", json={"email": "   "})
+
+    assert response.status_code == 422
+
+
+def test_demo_login_does_not_require_a_bearer_token():
+    # This IS the pre-auth entry point — it must work with no Authorization
+    # header at all, unlike every other endpoint in this file.
+    del app.dependency_overrides[get_current_user]
+
+    try:
+        response = client.post("/demo-login", json={"email": "manager@bugbusters.demo"})
+        assert response.status_code == 200
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+# --------------------------------------------------
+# Mini Chat Widget
+# --------------------------------------------------
+
+@patch("main.answer_chat_message")
+def test_chat_widget_valid_message(mock_answer):
+    mock_answer.return_value = "You can find that under the Policies tab."
+
+    response = client.post("/chat", json={"message": "Where's the PTO policy?"})
+
+    assert response.status_code == 200
+    assert response.json()["answer"] == "You can find that under the Policies tab."
+
+
+@patch("main.answer_chat_message")
+def test_chat_widget_agent_failure_returns_500(mock_answer):
+    mock_answer.side_effect = ChatAgentError("LLM call failed")
+
+    response = client.post("/chat", json={"message": "Hi"})
+
+    assert response.status_code == 500
+
+
+def test_chat_widget_blank_message_returns_422():
+    response = client.post("/chat", json={"message": "   "})
+
+    assert response.status_code == 422
+
+
+def test_chat_widget_does_not_require_a_bearer_token():
+    # Renders on the public Landing page pre-signin — must work with no
+    # Authorization header, same reasoning as demo-login above.
+    del app.dependency_overrides[get_current_user]
+
+    try:
+        with patch("main.answer_chat_message", return_value="Hi there!"):
+            response = client.post("/chat", json={"message": "Hi"})
+            assert response.status_code == 200
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
 
 
 # --------------------------------------------------
@@ -1243,6 +1375,97 @@ def test_upload_training_file_empty_returns_400():
     assert response.status_code == 400
 
 
+@patch("main.create_file_resource")
+@patch("main.generate_training_metadata")
+@patch("main.extract_text_from_upload")
+def test_upload_training_file_without_metadata_uses_agent(
+    mock_extract, mock_generate, mock_create
+):
+    mock_extract.return_value = "This handbook covers remote work policy..."
+    mock_generate.return_value = {
+        "title": "Remote Work Handbook",
+        "description": "Covers remote work eligibility.",
+        "category": "Handbook",
+    }
+    mock_create.return_value = {"id": "resource-1"}
+
+    response = client.post(
+        "/training/test-org/upload",
+        data={},
+        files={"file": ("handbook.pdf", b"fake-pdf-bytes", "application/pdf")},
+    )
+
+    assert response.status_code == 200
+    mock_extract.assert_called_once_with("handbook.pdf", b"fake-pdf-bytes")
+    mock_generate.assert_called_once_with(
+        "handbook.pdf", "This handbook covers remote work policy..."
+    )
+    mock_create.assert_called_once_with(
+        "test-org",
+        title="Remote Work Handbook",
+        description="Covers remote work eligibility.",
+        category="Handbook",
+        original_filename="handbook.pdf",
+        file_bytes=b"fake-pdf-bytes",
+        uploaded_by_user_id="test-oid",
+    )
+
+
+@patch("main.create_file_resource")
+@patch("main.generate_training_metadata")
+@patch("main.extract_text_from_upload")
+def test_upload_training_file_partial_metadata_fills_only_gaps(
+    mock_extract, mock_generate, mock_create
+):
+    mock_extract.return_value = "some content"
+    mock_generate.return_value = {
+        "title": "Agent Title",
+        "description": "Agent description.",
+        "category": "Handbook",
+    }
+    mock_create.return_value = {"id": "resource-1"}
+
+    response = client.post(
+        "/training/test-org/upload",
+        data={"title": "HR-Provided Title"},
+        files={"file": ("handbook.pdf", b"fake-pdf-bytes", "application/pdf")},
+    )
+
+    assert response.status_code == 200
+    # HR's title wins, the two gaps get filled by the agent.
+    assert mock_create.call_args.kwargs["title"] == "HR-Provided Title"
+    assert mock_create.call_args.kwargs["description"] == "Agent description."
+    assert mock_create.call_args.kwargs["category"] == "Handbook"
+
+
+@patch("main.generate_training_metadata")
+@patch("main.extract_text_from_upload")
+def test_upload_training_file_agent_failure_returns_422(mock_extract, mock_generate):
+    mock_extract.return_value = "some content"
+    mock_generate.side_effect = TrainingAgentError("LLM call failed")
+
+    response = client.post(
+        "/training/test-org/upload",
+        data={},
+        files={"file": ("handbook.pdf", b"fake-pdf-bytes", "application/pdf")},
+    )
+
+    assert response.status_code == 422
+
+
+@patch("main.extract_text_from_upload")
+def test_upload_training_file_unsupported_type_without_metadata(mock_extract):
+    mock_extract.side_effect = UnsupportedFileTypeError("Unsupported file type for 'x.exe'.")
+
+    response = client.post(
+        "/training/test-org/upload",
+        data={},
+        files={"file": ("x.exe", b"fake-bytes", "application/octet-stream")},
+    )
+
+    assert response.status_code == 400
+
+
 @patch("main.list_resources")
 def test_list_training_resources_allows_any_authenticated_role(mock_list):
     mock_list.return_value = []
@@ -1323,3 +1546,192 @@ def test_adherence_status_false(mock_get_ack):
 
     assert response.status_code == 200
     assert response.json()["acknowledged"] is False
+
+
+# --------------------------------------------------
+# Incident-to-Policy
+# --------------------------------------------------
+
+@patch("main.openai_service.generate_policy")
+@patch("main.draft_from_incident")
+def test_draft_policy_from_incident_success(mock_draft, mock_generate):
+    mock_draft.return_value = {
+        "title": "Data Handling Policy",
+        "requirements": ["Encrypt sensitive data at rest.", "Require MFA for admin access."],
+    }
+    mock_generate.return_value = "Full generated policy content."
+
+    response = client.post(
+        "/policies/test-org/from-incident",
+        json={
+            "company_name": "Quadrant Technologies",
+            "incident_summary": "A coworker sent a phishing email and leaked passwords.",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["title"] == "Data Handling Policy"
+    assert data["requirements"] == [
+        "Encrypt sensitive data at rest.",
+        "Require MFA for admin access.",
+    ]
+    assert data["policy"] == "Full generated policy content."
+
+    mock_draft.assert_called_once_with(
+        "A coworker sent a phishing email and leaked passwords.", None
+    )
+
+    prompt_used = mock_generate.call_args[0][0]
+    assert 'titled "Data Handling Policy"' in prompt_used
+
+
+@patch("main.openai_service.generate_policy")
+@patch("main.draft_from_incident")
+def test_draft_policy_from_incident_passes_context(mock_draft, mock_generate):
+    mock_draft.return_value = {"title": "T", "requirements": ["R1"]}
+    mock_generate.return_value = "content"
+
+    client.post(
+        "/policies/test-org/from-incident",
+        json={
+            "company_name": "Quadrant Technologies",
+            "incident_summary": "Incident text here that is long enough.",
+            "context": "Follow-up: was data exposed? Yes.",
+        },
+    )
+
+    mock_draft.assert_called_once_with(
+        "Incident text here that is long enough.",
+        "Follow-up: was data exposed? Yes.",
+    )
+
+
+@patch("main.draft_from_incident")
+def test_draft_policy_from_incident_agent_failure_returns_422(mock_draft):
+    mock_draft.side_effect = IncidentPolicyAgentError("LLM call failed")
+
+    response = client.post(
+        "/policies/test-org/from-incident",
+        json={
+            "company_name": "Quadrant Technologies",
+            "incident_summary": "Incident text here that is long enough.",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+@patch("main.openai_service.generate_policy")
+@patch("main.draft_from_incident")
+def test_draft_policy_from_incident_generation_failure_returns_500(mock_draft, mock_generate):
+    mock_draft.return_value = {"title": "T", "requirements": ["R1"]}
+    mock_generate.side_effect = Exception("Azure OpenAI unavailable")
+
+    response = client.post(
+        "/policies/test-org/from-incident",
+        json={
+            "company_name": "Quadrant Technologies",
+            "incident_summary": "Incident text here that is long enough.",
+        },
+    )
+
+    assert response.status_code == 500
+
+
+def test_draft_policy_from_incident_blocks_non_hr_role():
+    app.dependency_overrides[get_current_user] = lambda: _fake_user(roles=["Manager"])
+
+    try:
+        response = client.post(
+            "/policies/test-org/from-incident",
+            json={
+                "company_name": "Quadrant Technologies",
+                "incident_summary": "Incident text here that is long enough.",
+            },
+        )
+
+        assert response.status_code == 403
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+def test_draft_policy_from_incident_blank_summary_returns_422():
+    response = client.post(
+        "/policies/test-org/from-incident",
+        json={"company_name": "Quadrant Technologies", "incident_summary": "short"},
+    )
+
+    assert response.status_code == 422
+
+
+# --------------------------------------------------
+# Agentic Questionnaire
+# --------------------------------------------------
+
+@patch("main.generate_questions")
+def test_generate_questionnaire_success(mock_generate):
+    mock_generate.return_value = [
+        {"key": "pet_types", "label": "Which pets are allowed?", "placeholder": "Dogs and cats"},
+        {"key": "approval", "label": "Who approves bringing a pet in?", "placeholder": "Direct manager"},
+    ]
+
+    response = client.post(
+        "/questionnaire/generate",
+        json={"title": "Office Pet Policy", "policy_type": "Custom Section"},
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data["questions"]) == 2
+    assert data["questions"][0]["key"] == "pet_types"
+
+    mock_generate.assert_called_once_with("Office Pet Policy", "Custom Section")
+
+
+@patch("main.generate_questions")
+def test_generate_questionnaire_without_policy_type(mock_generate):
+    mock_generate.return_value = [
+        {"key": "a", "label": "Q1?", "placeholder": "p"},
+        {"key": "b", "label": "Q2?", "placeholder": "p"},
+    ]
+
+    client.post("/questionnaire/generate", json={"title": "Office Pet Policy"})
+
+    mock_generate.assert_called_once_with("Office Pet Policy", None)
+
+
+@patch("main.generate_questions")
+def test_generate_questionnaire_agent_failure_returns_422(mock_generate):
+    mock_generate.side_effect = QuestionnaireAgentError("LLM call failed")
+
+    response = client.post(
+        "/questionnaire/generate",
+        json={"title": "Office Pet Policy"},
+    )
+
+    assert response.status_code == 422
+
+
+def test_generate_questionnaire_blank_title_returns_422():
+    response = client.post("/questionnaire/generate", json={"title": "  "})
+
+    assert response.status_code == 422
+
+
+def test_generate_questionnaire_blocks_non_hr_role():
+    app.dependency_overrides[get_current_user] = lambda: _fake_user(roles=["Manager"])
+
+    try:
+        response = client.post(
+            "/questionnaire/generate",
+            json={"title": "Office Pet Policy"},
+        )
+
+        assert response.status_code == 403
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()

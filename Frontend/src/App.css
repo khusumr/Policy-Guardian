@@ -1,11 +1,11 @@
 /* ============================================================
-   THEME — Bug Busters design system
+   THEME — Policy Guardian design system
    Tokens match the design handoff README exactly. Old token names
    used throughout this file are kept as aliases onto the new palette,
    so every existing screen picks up the rebrand without a rewrite.
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:wght@400;600&family=Caveat:wght@600&display=swap');
 
 :root {
   /* Main surfaces */
@@ -54,7 +54,7 @@
      name from before this rebrand (Policies editor/generator, upload,
      incident chat, and other screens not yet rebuilt against the new
      component classes). Pointing them at the new palette means those
-     screens render in Bug Busters colors today without needing to be
+     screens render in Policy Guardian colors today without needing to be
      touched in this pass. ---- */
   --color-text-muted: color-mix(in srgb, var(--color-text) 58%, transparent);
   --color-border: var(--color-divider);
@@ -209,9 +209,6 @@ textarea.input { min-height: 90px; resize: vertical; }
   padding: 11px 13px; cursor: pointer; background: transparent; transition: all .15s ease; width: 100%;
 }
 .radio-card-selected { border-color: var(--color-accent); background: var(--color-accent-100); }
-.radio-card-wip { opacity: .55; }
-.radio-card-title { font-family: var(--font-heading); font-weight: 600; display: block; font-size: 14px; }
-.radio-card-desc { font-size: 12px; color: color-mix(in srgb, var(--color-text) 55%, transparent); }
 
 .seg { display: inline-flex; overflow: hidden; border: 1px solid var(--color-divider); border-radius: var(--radius-md); }
 .seg-opt {
@@ -337,16 +334,103 @@ textarea.input { min-height: 90px; resize: vertical; }
 .login-form-panel { padding: 60px; display: flex; flex-direction: column; justify-content: center; }
 .login-form-panel h2 { margin: 0 0 6px; font-size: 28px; }
 .login-form-lede { font-size: 16px; color: color-mix(in srgb, var(--color-text) 58%, transparent); margin: 0 0 30px; }
-.login-role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 30px; }
-.login-fields { display: flex; flex-direction: column; gap: 18px; margin-bottom: 26px; }
-.login-error { font-size: 14px; color: var(--color-accent-2-700); margin: -10px 0 16px; }
 .login-footnote { font-size: 13px; color: color-mix(in srgb, var(--color-text) 50%, transparent); margin: 16px 0 0; }
+
+/* Deliberately muted/small — a local dev escape hatch, not a real feature. */
+.dev-login-bypass {
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--color-divider);
+}
+
+.dev-login-bypass > .link-button {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+
+.dev-login-form {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 260px;
+}
 
 @media (max-width: 900px) {
   .login-card { grid-template-columns: 1fr; max-width: 480px; min-height: 0; }
   .login-brand-panel { padding: 36px 28px; }
   .login-form-panel { padding: 36px 28px; }
-  .login-role-grid { grid-template-columns: 1fr; }
+}
+
+
+/* ============================================================
+   LANDING PAGE
+   ============================================================ */
+
+.landing {
+  min-height: 100vh;
+  background: var(--color-bg);
+}
+
+.landing-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 24px 48px;
+}
+
+.landing-wordmark {
+  font-family: var(--font-heading); font-weight: 600; font-size: 20px;
+  color: var(--color-text);
+}
+
+.landing-hero {
+  background: var(--ink);
+  display: grid; grid-template-columns: 1fr 480px; align-items: center; gap: 48px;
+  padding: 64px 48px 80px;
+}
+
+.landing-hero-copy h1 {
+  font-family: var(--font-heading); font-weight: 600; font-size: 44px; line-height: 1.15;
+  letter-spacing: -0.02em; color: #f3f1fa; margin: 0 0 20px;
+  max-width: 620px;
+}
+
+.landing-hero-lede {
+  font-size: 17px; line-height: 1.6; color: rgba(243,241,250,0.72);
+  max-width: 520px; margin: 0 0 28px;
+}
+
+.landing-hero-image {
+  width: 100%; max-width: 420px; justify-self: center;
+}
+
+.landing-features {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;
+  padding: 48px;
+  max-width: 1400px; margin: 0 auto;
+}
+
+.landing-feature h3 {
+  font-family: var(--font-heading); font-weight: 600; font-size: 15px;
+  color: var(--color-text); margin: 0 0 8px;
+}
+
+.landing-feature p {
+  font-size: 13.5px; line-height: 1.6;
+  color: color-mix(in srgb, var(--color-text) 62%, transparent);
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .landing-nav { padding: 20px 24px; }
+  .landing-hero { grid-template-columns: 1fr; padding: 40px 24px 48px; text-align: center; }
+  .landing-hero-copy h1 { max-width: 100%; }
+  .landing-hero-lede { max-width: 100%; margin-left: auto; margin-right: auto; }
+  .landing-hero-image { max-width: 260px; }
+  .landing-features { grid-template-columns: 1fr 1fr; padding: 32px 24px; }
+}
+
+@media (max-width: 560px) {
+  .landing-features { grid-template-columns: 1fr; }
 }
 
 
@@ -880,6 +964,170 @@ textarea.input { min-height: 90px; resize: vertical; }
 .sign-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.sign-error {
+  color: var(--color-danger);
+  font-size: 14px;
+}
+
+
+/* ---- Signature capture (draw/type) ---- */
+
+.signature-capture {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 480px;
+}
+
+.signature-draw-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.signature-preview {
+  font-family: "Caveat", cursive;
+  font-size: 40px;
+  line-height: 1;
+  color: var(--ink);
+  padding: 10px 4px 4px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.signature-canvas {
+  width: 100%;
+  height: 140px;
+  border: 1px dashed var(--color-divider);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.signature-draw-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.signature-draw-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.signature-display-image {
+  display: block;
+  max-width: 280px;
+  max-height: 90px;
+  margin-top: 6px;
+}
+
+.signature-display-typed {
+  font-family: "Caveat", cursive;
+  font-size: 32px;
+  line-height: 1;
+  color: var(--ink);
+  margin-top: 4px;
+}
+
+
+/* ---- Popup/modal (generic centered overlay) ---- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 13, 36, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 100;
+}
+
+.modal {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 28px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+
+/* ---- Onboarding (Attest / Train / Adhere) ---- */
+
+.onboarding-progress {
+  display: flex;
+  gap: 6px;
+}
+
+.onboarding-progress-dot {
+  width: 28px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-divider);
+}
+
+.onboarding-progress-dot-active {
+  background: var(--color-accent);
+}
+
+.onboarding-body {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--color-text);
+}
+
+.onboarding-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  margin-bottom: 24px;
+  background: var(--color-primary-soft);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.onboarding-banner-done {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+
+/* ---- Mini chat widget (floating, embeddable) ---- */
+
+.chat-widget-button {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  z-index: 60;
+  transition: background 0.15s ease;
+}
+
+.chat-widget-button:hover {
+  background: var(--color-accent-600);
+}
+
+.chat-widget-panel {
+  z-index: 55;
 }
 
 .loading-dots {

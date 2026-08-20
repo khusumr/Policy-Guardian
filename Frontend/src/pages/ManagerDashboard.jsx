@@ -36,6 +36,11 @@ function ManagerDashboard({ user, onLogout }) {
   // just forces a re-render to pick the change back up.
   const [, forceRefresh] = useState(0);
 
+  // `user` is now a real Entra display name/username (see App.jsx), not one
+  // of the fake "manager1"/"manager2" ids the mock org chart (MOCK_USERS in
+  // Data/store.js) is keyed on. All three lookups below will come back
+  // empty for a real account — no crash, but manager name/team/assignments
+  // will just show blank until the backend supplies real org-chart data.
   const manager = getMockManager(user);
   const myAssignments = getAssignmentsForEmployee(user);
   const teamMembers = getMockTeam(user).map((member) => ({
@@ -112,7 +117,7 @@ function ManagerDashboard({ user, onLogout }) {
 
   return (
     <div>
-      <TopNav tabs={NAV_TABS} activeTab={view} onTabChange={setView} userName={manager?.name || user} userRole="manager" onLogout={onLogout} />
+      <TopNav tabs={NAV_TABS} activeTab={view} onTabChange={setView} userName={manager?.name || user} userRole="Manager" onLogout={onLogout} />
 
       {view === "settings" ? (
         <div className="content">
