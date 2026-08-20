@@ -29,10 +29,19 @@ export const msalConfig = {
   },
 };
 
-// Scopes for the initial sign-in. "openid" and "profile" are enough to get
-// the roles claim onto the ID token, because app roles are defined on this
-// same app registration (confirmed: the backend's ENTRA_CLIENT_ID matches
-// this app's clientId, rather than a separate API app registration).
+// Scopes for the initial sign-in. "openid" and "profile" get the roles
+// claim onto the ID token, because app roles are defined on this same app
+// registration (confirmed: the backend's ENTRA_CLIENT_ID matches this
+// app's clientId, rather than a separate API app registration).
+//
+// "User.Read" is added on top — it's a Microsoft Graph permission already
+// configured on the app registration. Requesting it here doesn't change
+// what we actually use (we still only read result.idToken, never the
+// Graph access token MSAL fetches alongside it for this scope), but if an
+// admin already granted consent when User.Read was added to the app
+// registration, that consent grant likely covered the openid/profile/
+// offline_access permissions listed on the same page at the time too —
+// worth testing whether that's what clears the "Approval required" screen.
 //
 // These same scopes are reused by Data/authToken.js's acquireTokenSilent
 // to get a token for real backend calls — the ID token itself is sent as
@@ -41,5 +50,5 @@ export const msalConfig = {
 // ID token or an access token, so this works without needing a scope from
 // "Expose an API" on the app registration, which isn't configured.
 export const loginRequest = {
-  scopes: ["openid", "profile"],
+  scopes: ["openid", "profile", "User.Read"],
 };

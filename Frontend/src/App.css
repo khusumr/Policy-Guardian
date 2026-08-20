@@ -336,6 +336,26 @@ textarea.input { min-height: 90px; resize: vertical; }
 .login-form-lede { font-size: 16px; color: color-mix(in srgb, var(--color-text) 58%, transparent); margin: 0 0 30px; }
 .login-footnote { font-size: 13px; color: color-mix(in srgb, var(--color-text) 50%, transparent); margin: 16px 0 0; }
 
+/* Deliberately muted/small — a local dev escape hatch, not a real feature. */
+.dev-login-bypass {
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--color-divider);
+}
+
+.dev-login-bypass > .link-button {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+
+.dev-login-form {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 260px;
+}
+
 @media (max-width: 900px) {
   .login-card { grid-template-columns: 1fr; max-width: 480px; min-height: 0; }
   .login-brand-panel { padding: 36px 28px; }
