@@ -22,6 +22,7 @@ from document_parser import extract_text_from_upload, UnsupportedFileTypeError
 from search_service import get_reference_links
 from auth import get_current_user, require_role
 from signature_repository import sign_policy, get_signature, list_signatures
+from assignment_repository import assign_policy, list_user_assignments
 
 
 # --------------------------------------------------
@@ -250,6 +251,10 @@ class SignPolicyRequest(BaseModel):
             raise ValueError("signed_name cannot be blank.")
 
         return value
+
+
+class AssignPolicyRequest(BaseModel):
+    user_ids: list[str] = Field(..., min_length=1, max_length=200)
 
 
 # --------------------------------------------------
@@ -679,6 +684,88 @@ def policy_signatures(
     user=Depends(require_role("HR", "Manager")),
 ):
     return list_signatures(org_id, policy_id)
+
+
+# --------------------------------------------------
+# Policy Assignments — HR sends specific policies to specific employees;
+# this is what "1/2 policies signed" progress is actually measured
+# against, not every policy in the org.
+# --------------------------------------------------
+
+@app.post(
+    "/policies/{org_id}/{policy_id}/assign",
+    tags=["Policy Assignments"],
+    summary="Assign a policy to one or more employees (HR only)",
+)
+def assign_policy_endpoint(
+    org_id: str,
+    policy_id: str,
+    request: AssignPolicyRequest,
+    user=Depends(require_role("HR")),
+):
+    policy = get_policy(org_id, policy_id)
+
+    if not policy:
+        raise HTTPException(status_code=404, detail="Policy not found")
+
+    policy_name = policy.title if policy.title else policy.policy_type
+
+    assignments = [
+        assign_policy(
+            org_id,
+            policy_id,
+            policy_name=policy_name,
+            assigned_to_user_id=recipient_id,
+            assigned_by_user_id=user.object_id,
+        )
+        for recipient_id in request.user_ids
+    ]
+
+    logger.info(
+        f"Policy {policy_id} assigned to {len(assignments)} user(s) for org {org_id}"
+    )
+
+    return assignments
+
+
+@app.get(
+    "/policies/{org_id}/users/{user_id}/progress",
+    tags=["Policy Assignments"],
+    summary="Signing progress for one employee (e.g. '1/2 policies signed')",
+)
+def user_progress(
+    org_id: str,
+    user_id: str,
+    user=Depends(get_current_user),
+):
+    # Anyone can check their own progress; checking someone else's is an
+    # HR/Manager oversight action, not something every role gets.
+    if user_id != user.object_id and not (
+        user.has_role("HR") or user.has_role("Manager")
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Can only view your own progress unless you're HR or a Manager.",
+        )
+
+    assignments = list_user_assignments(org_id, user_id)
+
+    policies = [
+        {
+            "policy_id": assignment.policy_id,
+            "policy_name": assignment.policy_name,
+            "signed": get_signature(org_id, assignment.policy_id, user_id) is not None,
+        }
+        for assignment in assignments
+    ]
+
+    signed_count = sum(1 for p in policies if p["signed"])
+
+    return {
+        "assigned": len(policies),
+        "signed": signed_count,
+        "policies": policies,
+    }
 
 
 # --------------------------------------------------
