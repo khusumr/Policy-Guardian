@@ -1,10 +1,12 @@
 import { useState } from "react";
 import Highlighter from "../components/ai/Highlighter";
 import AIResponsePanel from "../components/ai/AIResponsePanel";
+import { Textarea } from "../components/ui/FormControls";
+import Button from "../components/ui/Button";
+import { signAssignment, createTicket, roleLabel } from "../Data/store";
 import SignatureCapture from "../components/signature/SignatureCapture";
 import SignatureDisplay from "../components/signature/SignatureDisplay";
 import LoadingDots from "../components/ui/LoadingDots";
-import { signAssignment, roleLabel } from "../Data/store";
 import { signPolicy } from "../Data/signatureApi";
 import { ORG_ID } from "../Data/backendConfig";
 
@@ -15,18 +17,36 @@ function sectionAnchorId(sectionId) {
   return `policy-part-${sectionId}`;
 }
 
-function PolicyViewer({ assignment, onSigned }) {
+function PolicyViewer({ assignment, onSigned, allowFeedback = false }) {
   const [aiMode, setAiMode] = useState(null); // null | "ask"
   const [highlightedText, setHighlightedText] = useState("");
   const [signerName, setSignerName] = useState("");
   const [signatureMode, setSignatureMode] = useState("type"); // "type" | "draw"
   const [drawingDataUrl, setDrawingDataUrl] = useState(null);
   const [agreed, setAgreed] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackSent, setFeedbackSent] = useState(false);
   const [signing, setSigning] = useState(false);
   const [signError, setSignError] = useState("");
 
   const canSign =
     signerName.trim() && agreed && (signatureMode === "type" || !!drawingDataUrl);
+
+  function handleSendFeedback(e) {
+    e.preventDefault();
+    if (!feedbackText.trim()) return;
+
+    createTicket({
+      type: "feedback",
+      role: assignment.role,
+      title: `Feedback on ${roleLabel(assignment.role)} Policy`,
+      body: feedbackText.trim(),
+    });
+
+    setFeedbackText("");
+    setFeedbackSent(true);
+    setTimeout(() => setFeedbackSent(false), 3000);
+  }
 
   async function handleSign(e) {
     e.preventDefault();
@@ -143,6 +163,31 @@ function PolicyViewer({ assignment, onSigned }) {
           highlightedText={highlightedText}
           onClose={() => setAiMode(null)}
         />
+      )}
+
+      {allowFeedback && (
+        <div className="card panel" style={{ marginTop: 24 }}>
+          <h3 style={{ margin: "0 0 6px" }}>Send feedback to HR</h3>
+          <p className="editor-hint">
+            Flag anything that should change — HR will see this and can update the policy.
+          </p>
+          <form onSubmit={handleSendFeedback} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <Textarea
+              placeholder="e.g. The PTO carryover section is unclear about partial days..."
+              value={feedbackText}
+              onChange={(e) => setFeedbackText(e.target.value)}
+            />
+            <Button
+              variant="secondary"
+              type="submit"
+              disabled={!feedbackText.trim()}
+              style={{ alignSelf: "flex-start" }}
+            >
+              Send feedback
+            </Button>
+            {feedbackSent && <p className="sent-confirmation">Feedback sent to HR.</p>}
+          </form>
+        </div>
       )}
     </div>
   );

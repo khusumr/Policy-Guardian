@@ -22,9 +22,3 @@ AZURE_STORAGE_ACCOUNT_NAME = os.getenv("AZURE_STORAGE_ACCOUNT_NAME")
 AZURE_SEARCH_ENDPOINT = os.getenv("AZURE_SEARCH_ENDPOINT")
 AZURE_SEARCH_KEY = os.getenv("AZURE_SEARCH_KEY")
 AZURE_SEARCH_INDEX = os.getenv("AZURE_SEARCH_INDEX")
-
-# Neither of these is a secret — both are public identifiers that also get
-# embedded directly in the frontend's MSAL config, so defaulting them here
-# (rather than requiring every environment to set them) is safe.
-ENTRA_TENANT_ID = os.getenv("ENTRA_TENANT_ID", "0eadb77e-42dc-47f8-bbe3-ec2395e0712c")
-ENTRA_CLIENT_ID = os.getenv("ENTRA_CLIENT_ID", "843d2ee1-95e6-4b03-855b-06d31771f89e")

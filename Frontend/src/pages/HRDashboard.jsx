@@ -1,17 +1,17 @@
 import { useState } from "react";
-import Sidebar from "../components/Sidebar";
 import SectionEditor from "./SectionEditor";
 import PolicyOverall from "./PolicyOverall";
-import SectionGenerate from "./SectionGenerate";
-import CustomSectionForm from "./CustomSectionForm";
+import PolicyChatCreate from "./PolicyChatCreate";
 import IncidentReport from "./IncidentReport";
 import UploadPolicyForm from "./UploadPolicyForm";
 import Settings from "./Settings";
 import PolicyLibrary from "./PolicyLibrary";
 import SignedRecord from "./SignedRecord";
+import Tickets from "./Tickets";
 import TopNav from "../components/ui/TopNav";
 import Button from "../components/ui/Button";
 import Tag from "../components/ui/Tag";
+import { Select } from "../components/ui/FormControls";
 import MiniChatWidget from "../components/chat/MiniChatWidget";
 
 import {
@@ -22,16 +22,11 @@ import {
   getMockManager,
   getMockTeam,
   getExpirationInfo,
+  getAllRoles,
+  getTickets,
   roleLabel,
 } from "../Data/store";
 import { greeting, formattedToday, formatShortDate, relativeTime } from "../utils/format";
-
-const NAV_TABS = [
-  { key: "home", label: "Home" },
-  { key: "policies", label: "Policies" },
-  { key: "teams", label: "Teams" },
-  { key: "settings", label: "Settings" },
-];
 
 function getEmployeeStatus(employeeId) {
   const assignments = getAssignmentsForEmployee(employeeId);
@@ -49,14 +44,34 @@ function getEmployeeStatus(employeeId) {
   return { variant: "amber", label: "Pending", assignment: assignments[0] };
 }
 
+function RoleActionRow({ label, actionLabel, onStart }) {
+  const roles = getAllRoles();
+  const [role, setRole] = useState(roles[0]?.id || "");
+
+  return (
+    <div className="panel" style={{ padding: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <span style={{ fontSize: 13, fontWeight: 600, minWidth: 130 }}>{label}</span>
+      <Select value={role} onChange={(e) => setRole(e.target.value)} style={{ maxWidth: 140 }}>
+        {roles.map((r) => (
+          <option key={r.id} value={r.id}>
+            {r.label}
+          </option>
+        ))}
+      </Select>
+      <Button variant="secondary" size="sm" type="button" disabled={!role} onClick={() => onStart(role)}>
+        {actionLabel}
+      </Button>
+    </div>
+  );
+}
+
 function HRDashboard({ user, onLogout }) {
-  const [view, setView] = useState("home"); // "home" | "policies" | "settings"
+  const [view, setView] = useState("home"); // "home" | "policies" | "tickets" | "teams" | "settings"
   const [sections, setSections] = useState(getSections());
   const [page, setPage] = useState("home");
   const [selectedSection, setSelectedSection] = useState(null);
   const [selectedRole, setSelectedRole] = useState(null);
-  const [pending, setPending] = useState(null);
-  const [customSectionRole, setCustomSectionRole] = useState(null);
+  const [newSectionRole, setNewSectionRole] = useState(null);
   const [uploadRole, setUploadRole] = useState(null);
   const [viewingRecord, setViewingRecord] = useState(null); // { assignment, employeeName }
 
@@ -73,15 +88,13 @@ function HRDashboard({ user, onLogout }) {
     setView("policies");
   }
 
+  function handleBackToLibrary() {
+    setPage(null);
+  }
+
   function handleSelectSection(section) {
     setSelectedSection(section);
     setPage("editor");
-    goToPolicies();
-  }
-
-  function handleSelectPending(role, sectionType) {
-    setPending({ role, sectionType });
-    setPage("generate");
     goToPolicies();
   }
 
@@ -91,9 +104,9 @@ function HRDashboard({ user, onLogout }) {
     goToPolicies();
   }
 
-  function handleAddCustomSection(role) {
-    setCustomSectionRole(role);
-    setPage("customQuestionnaire");
+  function handleStartNewSection(role) {
+    setNewSectionRole(role);
+    setPage("newSection");
     goToPolicies();
   }
 
@@ -145,25 +158,22 @@ function HRDashboard({ user, onLogout }) {
     .sort((a, b) => new Date(b.at) - new Date(a.at))
     .slice(0, 3);
 
-  const selectedKey =
-    page === "overall" && selectedRole
-      ? `overall:${selectedRole}`
-      : page === "editor" && selectedSection
-      ? selectedSection.id
-      : page === "generate" && pending
-      ? `pending:${pending.role}:${pending.sectionType}`
-      : page === "customQuestionnaire" && customSectionRole
-      ? `custom:${customSectionRole}`
-      : page === "upload" && uploadRole
-      ? `upload:${uploadRole}`
-      : page === "incident"
-      ? "incident"
-      : null;
+  const openTicketCount = getTickets().filter(
+    (t) => t.status === "open" && t.type !== "policy_updated"
+  ).length;
+
+  const navTabs = [
+    { key: "home", label: "Home" },
+    { key: "policies", label: "Policies" },
+    { key: "tickets", label: openTicketCount > 0 ? `Tickets (${openTicketCount})` : "Tickets" },
+    { key: "teams", label: "Teams" },
+    { key: "settings", label: "Settings" },
+  ];
 
   return (
     <div>
       <TopNav
-        tabs={NAV_TABS}
+        tabs={navTabs}
         activeTab={view}
         onTabChange={setView}
         userName={user}
@@ -180,45 +190,41 @@ function HRDashboard({ user, onLogout }) {
           />
         </div>
       ) : view === "policies" ? (
-        <div className="dashboard">
-          <Sidebar
-            sections={sections}
-            selectedKey={selectedKey}
-            onSelectSection={handleSelectSection}
-            onSelectPending={handleSelectPending}
-            onSelectOverall={handleSelectOverall}
-            onAddCustomSection={handleAddCustomSection}
-            onAddUpload={handleAddUpload}
-            onHome={() => setView("home")}
-          />
-
-          <div className="content">
-            {page === "editor" && selectedSection ? (
-              <SectionEditor key={selectedSection.id} section={selectedSection} onUpdated={handleSectionUpdated} />
-            ) : page === "overall" && selectedRole ? (
-              <PolicyOverall
-                key={selectedRole}
-                role={selectedRole}
-                sections={sections}
-                onViewRecord={handleViewRecord}
-              />
-            ) : page === "generate" && pending ? (
-              <SectionGenerate
-                key={`${pending.role}:${pending.sectionType}`}
-                role={pending.role}
-                sectionType={pending.sectionType}
-                onSectionCreated={handleSectionCreated}
-              />
-            ) : page === "customQuestionnaire" && customSectionRole ? (
-              <CustomSectionForm key={customSectionRole} role={customSectionRole} onSectionCreated={handleSectionCreated} />
-            ) : page === "upload" && uploadRole ? (
-              <UploadPolicyForm key={uploadRole} role={uploadRole} onSectionCreated={handleSectionCreated} />
-            ) : page === "incident" ? (
-              <IncidentReport />
-            ) : (
-              <PolicyLibrary onOpenRole={handleSelectOverall} />
-            )}
-          </div>
+        <div className="content">
+          {page === "editor" && selectedSection ? (
+            <SectionEditor key={selectedSection.id} section={selectedSection} onUpdated={handleSectionUpdated} />
+          ) : page === "overall" && selectedRole ? (
+            <PolicyOverall
+              key={selectedRole}
+              role={selectedRole}
+              sections={sections}
+              onViewRecord={handleViewRecord}
+              onEditSection={handleSelectSection}
+              onAddSection={handleStartNewSection}
+            />
+          ) : page === "newSection" && newSectionRole ? (
+            <PolicyChatCreate
+              key={newSectionRole}
+              role={newSectionRole}
+              onSectionCreated={handleSectionCreated}
+              onCancel={handleBackToLibrary}
+            />
+          ) : page === "upload" && uploadRole ? (
+            <UploadPolicyForm
+              key={uploadRole}
+              role={uploadRole}
+              onSectionCreated={handleSectionCreated}
+              onCancel={handleBackToLibrary}
+            />
+          ) : page === "incident" ? (
+            <IncidentReport onCancel={handleBackToLibrary} />
+          ) : (
+            <PolicyLibrary onOpenRole={handleSelectOverall} />
+          )}
+        </div>
+      ) : view === "tickets" ? (
+        <div className="content">
+          <Tickets />
         </div>
       ) : view === "teams" ? (
         <div className="content">
@@ -398,6 +404,11 @@ function HRDashboard({ user, onLogout }) {
                 >
                   File an incident report
                 </Button>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <RoleActionRow label="New policy section" actionLabel="Start" onStart={handleStartNewSection} />
+                <RoleActionRow label="Upload a policy" actionLabel="Upload" onStart={handleAddUpload} />
               </div>
 
               <div>

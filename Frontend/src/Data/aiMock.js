@@ -1,3 +1,4 @@
+import { BACKEND_URL } from "./backendConfig";
 import { getAuthHeader } from "./authToken";
 
 function delay(ms) {
@@ -23,12 +24,15 @@ export function capitalizeSentences(text) {
 // --------------------------------------------------
 
 export async function askAIAboutText(question, highlightedText) {
+  const authHeader = await getAuthHeader();
+
   const response = await fetch(
-    "https://app-ai-policy-backend.azurewebsites.net/ask-ai",
+    `${BACKEND_URL}/ask-ai`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...(authHeader || {}),
       },
       body: JSON.stringify({
         highlighted_text: highlightedText,
@@ -55,12 +59,12 @@ export async function rewordText(instruction, highlightedText) {
   const authHeader = await getAuthHeader();
 
   const response = await fetch(
-    "https://app-ai-policy-backend.azurewebsites.net/refine-policy",
+    `${BACKEND_URL}/refine-policy`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(authHeader && { Authorization: authHeader }),
+        ...(authHeader || {}),
       },
       body: JSON.stringify({
         current_policy: highlightedText,

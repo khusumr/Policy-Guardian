@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from openai_service import OpenAIService
-from prompt_builder import build_policy_prompt
+from prompt_builder import build_policy_prompt, build_policy_chat_prompt
 from logger import get_logger
 from policy_repository import (
     create_policy,
@@ -199,6 +199,15 @@ class PolicyRequest(BaseModel):
             )
 
         return self
+
+
+class PolicyChatMessage(BaseModel):
+    role: str = Field(..., pattern="^(user|assistant)$")
+    text: str = Field(..., min_length=1, max_length=2000)
+
+
+class PolicyChatRequest(BaseModel):
+    messages: list[PolicyChatMessage] = Field(..., min_length=1, max_length=20)
 
 
 class RefinePolicyRequest(BaseModel):
@@ -422,6 +431,40 @@ def generate_policy_endpoint(
         "policy": policy,
         "further_reading": further_reading,
     }
+
+
+# --------------------------------------------------
+# Agentic Policy Chat — smart follow-up questions while drafting a new
+# section, instead of a fixed field form.
+# --------------------------------------------------
+
+@app.post(
+    "/policy-chat",
+    tags=["AI Policies"],
+    summary="Ask a follow-up question while drafting a new policy section",
+)
+def policy_chat_endpoint(
+    request: PolicyChatRequest,
+    user=Depends(require_role("HR")),
+):
+    logger.info("Received policy chat request")
+
+    try:
+        prompt = build_policy_chat_prompt(
+            [{"role": m.role, "text": m.text} for m in request.messages]
+        )
+
+        reply = openai_service.generate_policy(prompt)
+
+    except Exception as e:
+        logger.error(f"Policy chat failed: {e}")
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to get a response. Please try again.",
+        )
+
+    return {"reply": reply.strip()}
 
 
 # --------------------------------------------------
