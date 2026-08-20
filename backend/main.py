@@ -36,6 +36,7 @@ from incident_policy_agent import draft_from_incident, IncidentPolicyAgentError
 from demo_login_db import init_demo_db
 from demo_login_repository import get_user_by_email
 from questionnaire_agent import generate_questions, QuestionnaireAgentError
+from chat_agent import answer_chat_message, ChatAgentError
 
 
 # --------------------------------------------------
@@ -244,6 +245,20 @@ class AskAIRequest(BaseModel):
 
         if not value:
             raise ValueError("Field cannot be blank.")
+
+        return value
+
+
+class ChatMessageRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=2000)
+
+    @field_validator("message")
+    @classmethod
+    def validate_message(cls, value: str):
+        value = value.strip()
+
+        if not value:
+            raise ValueError("message cannot be blank.")
 
         return value
 
@@ -541,6 +556,34 @@ def demo_login(request: DemoLoginRequest):
         )
 
     return demo_user
+
+
+# --------------------------------------------------
+# Mini Chat Widget
+#
+# No auth dependency: MiniChatWidget.jsx renders on the public Landing
+# page (no signed-in user yet) as well as HRDashboard, so this can't
+# require a role or even a token the way /ask-ai does. chat_agent.py's
+# prompt is written to not assume any org/role context accordingly.
+# --------------------------------------------------
+
+@app.post(
+    "/chat",
+    tags=["Chat Widget"],
+    summary="Answer a general question from the mini chat widget",
+)
+def chat_widget_endpoint(request: ChatMessageRequest):
+    try:
+        answer = answer_chat_message(request.message)
+    except ChatAgentError as e:
+        logger.error(f"Chat widget reply failed: {e}")
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to get a response. Please try again.",
+        )
+
+    return {"answer": answer}
 
 
 # --------------------------------------------------
