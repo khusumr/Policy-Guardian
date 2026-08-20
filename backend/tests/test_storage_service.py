@@ -48,3 +48,44 @@ def test_unavailable_when_neither_configured(monkeypatch):
 
     assert service.client is None
     assert service.container is None
+
+
+@patch("storage_service.BlobServiceClient")
+def test_defaults_to_generated_policies_container(mock_client_cls, monkeypatch):
+    monkeypatch.setattr(storage_service, "AZURE_STORAGE_CONNECTION_STRING", "fake-conn-str")
+    mock_client = MagicMock()
+    mock_client_cls.from_connection_string.return_value = mock_client
+
+    storage_service.StorageService()
+
+    mock_client.get_container_client.assert_called_once_with("generated-policies")
+
+
+@patch("storage_service.BlobServiceClient")
+def test_accepts_custom_container_name(mock_client_cls, monkeypatch):
+    monkeypatch.setattr(storage_service, "AZURE_STORAGE_CONNECTION_STRING", "fake-conn-str")
+    mock_client = MagicMock()
+    mock_client_cls.from_connection_string.return_value = mock_client
+
+    storage_service.StorageService(container_name="source-documents")
+
+    mock_client.get_container_client.assert_called_once_with("source-documents")
+
+
+@patch("storage_service.BlobServiceClient")
+def test_save_and_load_bytes(mock_client_cls, monkeypatch):
+    monkeypatch.setattr(storage_service, "AZURE_STORAGE_CONNECTION_STRING", "fake-conn-str")
+    mock_client = MagicMock()
+    mock_client_cls.from_connection_string.return_value = mock_client
+    mock_blob = MagicMock()
+    mock_blob.readall.return_value = b"fake-bytes"
+    mock_client.get_container_client.return_value.download_blob.return_value = mock_blob
+
+    service = storage_service.StorageService()
+    service.save_bytes("some/path", b"fake-bytes")
+    result = service.load_bytes("some/path")
+
+    service.container.upload_blob.assert_called_once_with(
+        "some/path", b"fake-bytes", overwrite=True
+    )
+    assert result == b"fake-bytes"

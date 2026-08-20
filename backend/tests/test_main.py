@@ -1091,3 +1091,176 @@ def test_user_progress_others_allowed_for_manager(mock_list_assignments):
         assert response.status_code == 200
     finally:
         app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+# --------------------------------------------------
+# Training Resources
+# --------------------------------------------------
+
+@patch("main.create_link_resource")
+def test_add_training_link_success(mock_create):
+    mock_create.return_value = {
+        "id": "resource-1",
+        "title": "Onboarding Video",
+        "resource_type": "link",
+    }
+
+    response = client.post(
+        "/training/test-org/link",
+        json={
+            "title": "Onboarding Video",
+            "description": "Intro to company culture",
+            "category": "Onboarding",
+            "url": "https://example.com/video",
+        },
+    )
+
+    assert response.status_code == 200
+    mock_create.assert_called_once_with(
+        "test-org",
+        title="Onboarding Video",
+        description="Intro to company culture",
+        category="Onboarding",
+        url="https://example.com/video",
+        uploaded_by_user_id="test-oid",
+    )
+
+
+def test_add_training_link_blocks_non_hr_role():
+    app.dependency_overrides[get_current_user] = lambda: _fake_user(roles=["Manager"])
+
+    try:
+        response = client.post(
+            "/training/test-org/link",
+            json={
+                "title": "Onboarding Video",
+                "description": "Intro to company culture",
+                "category": "Onboarding",
+                "url": "https://example.com/video",
+            },
+        )
+
+        assert response.status_code == 403
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+@patch("main.create_file_resource")
+def test_upload_training_file_success(mock_create):
+    mock_create.return_value = {
+        "id": "resource-1",
+        "title": "Employee Handbook",
+        "resource_type": "file",
+        "original_filename": "handbook.pdf",
+    }
+
+    response = client.post(
+        "/training/test-org/upload",
+        data={
+            "title": "Employee Handbook",
+            "description": "Full handbook",
+            "category": "Handbook",
+        },
+        files={"file": ("handbook.pdf", b"fake-pdf-bytes", "application/pdf")},
+    )
+
+    assert response.status_code == 200
+    mock_create.assert_called_once()
+    assert mock_create.call_args.kwargs["original_filename"] == "handbook.pdf"
+    assert mock_create.call_args.kwargs["file_bytes"] == b"fake-pdf-bytes"
+
+
+def test_upload_training_file_empty_returns_400():
+    response = client.post(
+        "/training/test-org/upload",
+        data={
+            "title": "Employee Handbook",
+            "description": "Full handbook",
+            "category": "Handbook",
+        },
+        files={"file": ("handbook.pdf", b"", "application/pdf")},
+    )
+
+    assert response.status_code == 400
+
+
+@patch("main.list_resources")
+def test_list_training_resources_allows_any_authenticated_role(mock_list):
+    mock_list.return_value = []
+    app.dependency_overrides[get_current_user] = lambda: _fake_user(roles=["Intern"])
+
+    try:
+        response = client.get("/training/test-org")
+
+        assert response.status_code == 200
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+@patch("main.get_resource_file_bytes")
+@patch("main.get_resource")
+def test_download_training_resource_success(mock_get_resource, mock_get_bytes):
+    mock_get_resource.return_value = SimpleNamespace(
+        resource_type="file", original_filename="handbook.pdf"
+    )
+    mock_get_bytes.return_value = b"fake-pdf-bytes"
+
+    response = client.get("/training/test-org/resource-1/download")
+
+    assert response.status_code == 200
+    assert response.content == b"fake-pdf-bytes"
+    assert 'filename="handbook.pdf"' in response.headers["content-disposition"]
+
+
+@patch("main.get_resource")
+def test_download_training_resource_not_found(mock_get_resource):
+    mock_get_resource.return_value = None
+
+    response = client.get("/training/test-org/missing/download")
+
+    assert response.status_code == 404
+
+
+@patch("main.get_resource")
+def test_download_training_link_resource_returns_400(mock_get_resource):
+    mock_get_resource.return_value = SimpleNamespace(
+        resource_type="link", original_filename=None
+    )
+
+    response = client.get("/training/test-org/resource-1/download")
+
+    assert response.status_code == 400
+
+
+# --------------------------------------------------
+# Adherence
+# --------------------------------------------------
+
+@patch("main.acknowledge")
+def test_acknowledge_adherence_success(mock_acknowledge):
+    mock_acknowledge.return_value = {"org_id": "test-org", "user_id": "test-oid"}
+
+    response = client.post("/adherence/test-org/acknowledge")
+
+    assert response.status_code == 200
+    mock_acknowledge.assert_called_once_with("test-org", "test-oid")
+
+
+@patch("main.get_acknowledgment")
+def test_adherence_status_true(mock_get_ack):
+    mock_get_ack.return_value = {"org_id": "test-org", "user_id": "test-oid"}
+
+    response = client.get("/adherence/test-org/acknowledged-by-me")
+
+    assert response.status_code == 200
+    assert response.json()["acknowledged"] is True
+
+
+@patch("main.get_acknowledgment")
+def test_adherence_status_false(mock_get_ack):
+    mock_get_ack.return_value = None
+
+    response = client.get("/adherence/test-org/acknowledged-by-me")
+
+    assert response.status_code == 200
+    assert response.json()["acknowledged"] is False

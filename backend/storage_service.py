@@ -13,9 +13,10 @@ CONTAINER_NAME = "generated-policies"
 
 
 class StorageService:
-    def __init__(self):
+    def __init__(self, container_name: str = CONTAINER_NAME):
         self.client = None
         self.container = None
+        self.container_name = container_name
 
         try:
             if AZURE_STORAGE_CONNECTION_STRING:
@@ -42,7 +43,7 @@ class StorageService:
                 )
                 return
 
-            self.container = self.client.get_container_client(CONTAINER_NAME)
+            self.container = self.client.get_container_client(self.container_name)
 
             try:
                 self.container.create_container()
@@ -87,6 +88,24 @@ class StorageService:
         self._ensure_storage_available()
 
         self.container.delete_blob(blob_name)
+
+    def save_bytes(self, blob_name: str, data: bytes) -> None:
+        self._ensure_storage_available()
+
+        logger.info(f"Saving binary blob: {blob_name}")
+
+        self.container.upload_blob(blob_name, data, overwrite=True)
+
+    def load_bytes(self, blob_name: str) -> bytes | None:
+        self._ensure_storage_available()
+
+        try:
+            blob = self.container.download_blob(blob_name)
+            return blob.readall()
+
+        except Exception:
+            logger.warning(f"Blob not found: {blob_name}")
+            return None
 
     def list_blobs(self, prefix: str) -> list[str]:
         self._ensure_storage_available()
