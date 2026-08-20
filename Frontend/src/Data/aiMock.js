@@ -9,6 +9,14 @@ function trim(text, max = 120) {
   return text.slice(0, max) + "…";
 }
 
+// Capitalizes the first letter of the string and of every sentence that
+// follows a ".", "!", or "?" — used to normalize casing on report text
+// that's assembled from raw user input, which may be typed in any case.
+export function capitalizeSentences(text) {
+  if (!text) return text;
+  return text.replace(/(^\s*\w|[.!?]+\s+\w)/g, (match) => match.toUpperCase());
+}
+
 
 // --------------------------------------------------
 // Ask AI About Selected Policy Text
@@ -97,10 +105,12 @@ export async function replyToIncidentMessage(conversationSoFar) {
 export async function summarizeIncident(conversation) {
   await delay(900);
 
-  const transcript = conversation
-    .filter((m) => m.role === "user")
-    .map((m) => m.text)
-    .join(" ");
+  const transcript = capitalizeSentences(
+    conversation
+      .filter((m) => m.role === "user")
+      .map((m) => m.text)
+      .join(" ")
+  );
 
   return (
     `Overview\n${trim(transcript, 260) || "No details were provided."}\n\n` +
