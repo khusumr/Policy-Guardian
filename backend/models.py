@@ -65,3 +65,14 @@ class PolicySignature(BaseModel):
     signer_roles: list[str] = Field(default_factory=list)
     signed_name: str
     signed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class PolicyAssignment(BaseModel):
+    # Records that HR sent a specific policy to a specific employee.
+    # Progress ("1/2 policies signed") is computed from these, scoped to
+    # what an employee was actually sent — not every policy in the org.
+    policy_id: str
+    policy_name: str
+    assigned_to_user_id: str
+    assigned_by_user_id: str
+    assigned_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

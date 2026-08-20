@@ -971,3 +971,123 @@ def test_policy_signatures_blocks_intern():
         assert response.status_code == 403
     finally:
         app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+# --------------------------------------------------
+# Policy Assignments
+# --------------------------------------------------
+
+@patch("main.assign_policy")
+@patch("main.get_policy")
+def test_assign_policy_success(mock_get_policy, mock_assign):
+    mock_get_policy.return_value = SimpleNamespace(
+        id="policy-1", title=None, policy_type="Code of Conduct"
+    )
+    mock_assign.side_effect = lambda org_id, policy_id, **kwargs: {
+        "policy_id": policy_id,
+        **kwargs,
+    }
+
+    response = client.post(
+        "/policies/test-org/policy-1/assign",
+        json={"user_ids": ["intern-1", "intern-2"]},
+    )
+
+    assert response.status_code == 200
+    assert len(response.json()) == 2
+    assert mock_assign.call_count == 2
+
+    mock_assign.assert_any_call(
+        "test-org",
+        "policy-1",
+        policy_name="Code of Conduct",
+        assigned_to_user_id="intern-1",
+        assigned_by_user_id="test-oid",
+    )
+
+
+@patch("main.get_policy")
+def test_assign_policy_not_found(mock_get_policy):
+    mock_get_policy.return_value = None
+
+    response = client.post(
+        "/policies/test-org/missing-policy/assign",
+        json={"user_ids": ["intern-1"]},
+    )
+
+    assert response.status_code == 404
+
+
+def test_assign_policy_blocks_non_hr_role():
+    app.dependency_overrides[get_current_user] = lambda: _fake_user(roles=["Manager"])
+
+    try:
+        response = client.post(
+            "/policies/test-org/policy-1/assign",
+            json={"user_ids": ["intern-1"]},
+        )
+
+        assert response.status_code == 403
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+@patch("main.get_signature")
+@patch("main.list_user_assignments")
+def test_user_progress_computes_signed_count(mock_list_assignments, mock_get_signature):
+    mock_list_assignments.return_value = [
+        SimpleNamespace(policy_id="policy-1", policy_name="Code of Conduct"),
+        SimpleNamespace(policy_id="policy-2", policy_name="Security Policy"),
+    ]
+    # Signed the first, not the second.
+    mock_get_signature.side_effect = lambda org_id, policy_id, user_id: (
+        {"policy_id": policy_id} if policy_id == "policy-1" else None
+    )
+
+    response = client.get("/policies/test-org/users/test-oid/progress")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["assigned"] == 2
+    assert data["signed"] == 1
+    assert data["policies"][0]["signed"] is True
+    assert data["policies"][1]["signed"] is False
+
+
+@patch("main.list_user_assignments")
+def test_user_progress_own_progress_always_allowed(mock_list_assignments):
+    mock_list_assignments.return_value = []
+    app.dependency_overrides[get_current_user] = lambda: _fake_user(roles=["Intern"])
+
+    try:
+        response = client.get("/policies/test-org/users/test-oid/progress")
+
+        assert response.status_code == 200
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+def test_user_progress_others_blocked_for_non_hr_manager():
+    app.dependency_overrides[get_current_user] = lambda: _fake_user(roles=["Intern"])
+
+    try:
+        response = client.get("/policies/test-org/users/someone-else/progress")
+
+        assert response.status_code == 403
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+@patch("main.list_user_assignments")
+def test_user_progress_others_allowed_for_manager(mock_list_assignments):
+    mock_list_assignments.return_value = []
+    app.dependency_overrides[get_current_user] = lambda: _fake_user(roles=["Manager"])
+
+    try:
+        response = client.get("/policies/test-org/users/someone-else/progress")
+
+        assert response.status_code == 200
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
