@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import HRDashboard from "./pages/HRDashboard";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
@@ -10,6 +11,7 @@ import "./App.css";
 
 function App() {
   const [user, setUser] = useState(null);
+  const [view, setView] = useState("landing"); // "landing" | "login" — only matters while signed out
 
   useEffect(() => {
     applyPrefs(getPrefs());
@@ -18,7 +20,11 @@ function App() {
   return (
     <>
       {user === null ? (
-        <Login setUser={setUser} />
+        view === "landing" ? (
+          <Landing onGetStarted={() => setView("login")} />
+        ) : (
+          <Login setUser={setUser} />
+        )
       ) : user === "hr" ? (
         <HRDashboard user={user} onLogout={() => setUser(null)} />
       ) : user === "manager1" || user === "manager2" ? (

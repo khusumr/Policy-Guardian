@@ -4,8 +4,8 @@ function TopNav({ tabs, activeTab, onTabChange, userName, userRole, onLogout }) 
   return (
     <nav className="nav">
       <div className="nav-brand">
-        Bug Busters
-        <span className="nav-brand-sub">Policy Pilot</span>
+        Policy Guardian
+        <span className="nav-brand-sub">AI Policy Generator</span>
       </div>
 
       {tabs.map((tab) => (

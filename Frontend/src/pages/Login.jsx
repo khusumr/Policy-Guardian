@@ -51,11 +51,11 @@ function Login({ setUser }) {
       <div className="login-card">
         <div className="login-brand-panel">
           <div className="login-wordmark">
-            Bug
+            Policy
             <br />
-            Busters
+            Guardian
           </div>
-          <div className="login-subtitle">Policy Pilot</div>
+          <div className="login-subtitle">AI Policy Generator</div>
           <p className="login-lede">
             Draft, cite and circulate company policy — then track who has
             actually signed it.
