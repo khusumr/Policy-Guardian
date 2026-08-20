@@ -19,6 +19,7 @@ function IncidentReport() {
   const [summary, setSummary] = useState(null);
   const [nextSteps, setNextSteps] = useState(null);
   const [generating, setGenerating] = useState(false);
+  const [copied, setCopied] = useState(false);
   const chatEndRef = useRef(null);
 
   useEffect(() => {
@@ -54,6 +55,20 @@ function IncidentReport() {
     setMessages([]);
     setSummary(null);
     setNextSteps(null);
+  }
+
+  async function handleCopy() {
+    const reportText = [
+      "Summary Report",
+      summary,
+      "",
+      "Suggested Next Steps",
+      ...nextSteps.map((step, i) => `${i + 1}. ${step}`),
+    ].join("\n");
+
+    await navigator.clipboard.writeText(reportText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   const userMessageCount = messages.filter((m) => m.role === "user").length;
@@ -112,7 +127,14 @@ function IncidentReport() {
         </div>
 
         <div className="incident-report panel">
-          <h2>Summary Report</h2>
+          <div className="incident-report-header">
+            <h2>Summary Report</h2>
+            {summary && (
+              <button className="link-button" onClick={handleCopy}>
+                {copied ? "Copied!" : "Copy to clipboard"}
+              </button>
+            )}
+          </div>
           {!summary ? (
             <p className="sidebar-empty" style={{ color: "var(--color-text-muted)" }}>
               Nothing generated yet. Describe the incident in the chat, then click "Generate
