@@ -32,12 +32,29 @@ resource "azurerm_linux_web_app" "backend" {
       python_version = "3.11"
     }
     cors {
-      # Now that the frontend has a real, stable URL, this is tightened
-      # from the previous wildcard. FastAPI's own CORSMiddleware in
-      # main.py is the one that actually matters for allow_credentials +
-      # bearer-token requests — this platform-level setting is a second,
-      # matching layer, not a replacement for it.
-      allowed_origins = ["https://${azurerm_static_web_app.frontend.default_host_name}"]
+      # This is NOT just a secondary layer that main.py's own
+      # CORSMiddleware makes redundant — that assumption (from when this
+      # block was first tightened) turned out to be wrong. This
+      # platform-level setting is enforced by Azure's edge BEFORE a
+      # request ever reaches the FastAPI app, so a mismatch between the
+      # two lists blocks the request outright with a 400 on the OPTIONS
+      # preflight — confirmed directly:
+      #   curl -X OPTIONS .../demo-login -H "Origin: http://localhost:5173"
+      #   -> HTTP 400 "The origin ... is not allowed" (from Azure's own
+      #      middleware, x-ms-middleware-request-id header — never
+      #      reaches main.py).
+      # This only surfaces on POST/PATCH (they trigger a CORS preflight;
+      # plain GETs don't), which is why it went unnoticed: it silently
+      # broke local dev against the real backend for anything but simple
+      # reads. Mirrors backend/main.py's CORSMiddleware allow_origins
+      # exactly — keep the two lists in sync going forward.
+      allowed_origins = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+        "https://${azurerm_static_web_app.frontend.default_host_name}",
+      ]
     }
     # Without this, Azure just shows its default placeholder page even
     # after a successful deploy — it needs to be told how to actually
