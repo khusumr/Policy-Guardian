@@ -33,6 +33,8 @@ from training_repository import (
 from adherence_repository import acknowledge, get_acknowledgment
 from training_agent import generate_metadata as generate_training_metadata, TrainingAgentError
 from incident_policy_agent import draft_from_incident, IncidentPolicyAgentError
+from demo_login_db import init_demo_db
+from demo_login_repository import get_user_by_email
 
 
 # --------------------------------------------------
@@ -40,7 +42,7 @@ from incident_policy_agent import draft_from_incident, IncidentPolicyAgentError
 # --------------------------------------------------
 
 app = FastAPI(
-    title="Policy Pilot API",
+    title="Policy Guardian API",
     description=(
         "Backend API for generating, refining, storing, "
         "retrieving, and exporting HR policies using Azure OpenAI."
@@ -70,6 +72,10 @@ app.add_middleware(
 
 openai_service = OpenAIService()
 logger = get_logger(__name__)
+
+# Demo login fallback - see demo_login_db.py. Safe/idempotent to run on
+# every startup; only creates the table + seed rows if they don't exist.
+init_demo_db()
 
 
 # --------------------------------------------------
@@ -237,6 +243,23 @@ class AskAIRequest(BaseModel):
 
         if not value:
             raise ValueError("Field cannot be blank.")
+
+        return value
+
+
+class DemoLoginRequest(BaseModel):
+    # Demo-only fallback for when real Entra login is unavailable - see
+    # demo_login_db.py. No password field on purpose: this is an email
+    # lookup, not authentication.
+    email: str = Field(..., min_length=3, max_length=200)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str):
+        value = value.strip()
+
+        if not value:
+            raise ValueError("email cannot be blank.")
 
         return value
 
@@ -434,7 +457,7 @@ Important rules:
     tags=["AI Policies"],
     summary="Ask AI a question about selected policy text",
 )
-def ask_ai(request: AskAIRequest):
+def ask_ai(request: AskAIRequest, user=Depends(get_current_user)):
     logger.info("Received Ask AI request")
 
     try:
@@ -474,6 +497,34 @@ Important rules:
             status_code=500,
             detail="Failed to answer question. Please try again.",
         )
+
+
+# --------------------------------------------------
+# Demo Login (fallback)
+#
+# Deliberately isolated from the real Entra/MSAL auth flow (auth.py,
+# get_current_user, require_role): no JWT, no token, no role check on
+# this endpoint itself - it exists to hand out a role, not to guard one.
+# Swap the frontend between this and real MSAL login without touching
+# either implementation. See demo_login_db.py for why SQLite / why this
+# is the only SQL table in the project.
+# --------------------------------------------------
+
+@app.post(
+    "/demo-login",
+    tags=["Demo Login"],
+    summary="Look up a demo user's role by email (no password/token check)",
+)
+def demo_login(request: DemoLoginRequest):
+    demo_user = get_user_by_email(request.email)
+
+    if demo_user is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No demo user found with that email.",
+        )
+
+    return demo_user
 
 
 # --------------------------------------------------
