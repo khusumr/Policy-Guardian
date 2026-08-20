@@ -16,7 +16,7 @@ from auth import get_current_user, CurrentUser
 
 
 def _fake_user(roles=("HR",)):
-    return CurrentUser({"name": "Test User", "roles": list(roles), "oid": "test-oid"})
+    return CurrentUser(object_id="test-oid", roles=list(roles), name="Test User")
 
 
 # Everything below predates role-based auth and is testing endpoint

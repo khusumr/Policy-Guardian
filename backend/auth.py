@@ -1,82 +1,60 @@
-import jwt
 from fastapi import Depends, HTTPException, Request
-from jwt import PyJWKClient
 
-from settings import ENTRA_TENANT_ID, ENTRA_CLIENT_ID
 from logger import get_logger
 
 logger = get_logger(__name__)
 
-JWKS_URL = f"https://login.microsoftonline.com/{ENTRA_TENANT_ID}/discovery/v2.0/keys"
-ISSUER = f"https://login.microsoftonline.com/{ENTRA_TENANT_ID}/v2.0"
-
-# PyJWKClient caches fetched signing keys by kid internally, so this one
-# client instance (not re-created per request) avoids hitting Microsoft's
-# JWKS endpoint on every single API call.
-_jwks_client: PyJWKClient | None = None
-
-
-def _get_jwks_client() -> PyJWKClient:
-    global _jwks_client
-
-    if _jwks_client is None:
-        _jwks_client = PyJWKClient(JWKS_URL)
-
-    return _jwks_client
+# Real Entra ID / MSAL sign-in has been removed from this project (was
+# JWT validation against Microsoft's JWKS endpoint - see git history for
+# ENTRA_TENANT_ID/ENTRA_CLIENT_ID and PyJWKClient if that ever comes back).
+# The only login path now is the demo fallback (demo_login_db.py /
+# POST /demo-login), which returns a role with no token, session, or
+# signature of any kind.
+#
+# So this is NOT authentication - it trusts whatever the caller puts in
+# these headers, no verification at all. Anyone can set X-Demo-Role: HR
+# and get HR access. That's an accepted tradeoff for a demo/hackathon
+# project with no real user data at stake - do not reuse this approach
+# anywhere real auth matters.
+ROLE_HEADER = "X-Demo-Role"
+EMAIL_HEADER = "X-Demo-Email"
+NAME_HEADER = "X-Demo-Name"
 
 
 class CurrentUser:
-    def __init__(self, claims: dict):
-        self.claims = claims
-        self.roles: list[str] = claims.get("roles", [])
-        self.name = claims.get("name") or claims.get("preferred_username")
-        self.object_id = claims.get("oid")
+    def __init__(self, *, object_id: str, roles: list[str], name: str | None = None):
+        self.object_id = object_id
+        self.roles = roles
+        self.name = name or object_id
 
     def has_role(self, role: str) -> bool:
         return role in self.roles
 
 
 def get_current_user(request: Request) -> CurrentUser:
-    """FastAPI dependency: validates the Authorization header's bearer
-    token against Entra ID's public signing keys and returns the caller's
-    identity + roles. Raises 401 on anything wrong with the token itself
-    (missing, expired, bad signature, wrong audience/issuer) — never lets
-    an invalid token through as an anonymous/degraded request.
+    """FastAPI dependency: reads identity/role straight from headers the
+    frontend sets after a demo login. No verification - see module
+    docstring. Raises 401 only if the headers are missing entirely.
     """
-    auth_header = request.headers.get("Authorization", "")
+    email = request.headers.get(EMAIL_HEADER, "").strip()
+    role = request.headers.get(ROLE_HEADER, "").strip()
 
-    if not auth_header.startswith("Bearer "):
+    if not email or not role:
         raise HTTPException(
             status_code=401,
-            detail="Missing or invalid Authorization header. Expected 'Bearer <token>'.",
+            detail=f"Missing {EMAIL_HEADER}/{ROLE_HEADER} headers. Sign in via /demo-login first.",
         )
 
-    token = auth_header.removeprefix("Bearer ").strip()
+    name = request.headers.get(NAME_HEADER, "").strip() or None
 
-    try:
-        signing_key = _get_jwks_client().get_signing_key_from_jwt(token)
-
-        claims = jwt.decode(
-            token,
-            signing_key.key,
-            algorithms=["RS256"],
-            audience=ENTRA_CLIENT_ID,
-            issuer=ISSUER,
-        )
-
-    except jwt.PyJWTError as exc:
-        logger.warning(f"Token validation failed: {exc}")
-
-        raise HTTPException(status_code=401, detail=f"Invalid token: {exc}")
-
-    return CurrentUser(claims)
+    return CurrentUser(object_id=email, roles=[role], name=name)
 
 
 def require_role(*allowed_roles: str):
     """Dependency factory: Depends(require_role("HR", "Manager")) blocks
-    the request with 403 unless the caller's token has at least one of the
-    listed roles. Composes with get_current_user rather than duplicating
-    its validation.
+    the request with 403 unless the caller's X-Demo-Role header is one of
+    the listed roles. Composes with get_current_user rather than
+    duplicating its logic.
     """
 
     def dependency(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
