@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from main import app
 from document_parser import UnsupportedFileTypeError
 from training_agent import TrainingAgentError
+from incident_policy_agent import IncidentPolicyAgentError
 from auth import get_current_user, CurrentUser
 
 
@@ -1356,3 +1357,122 @@ def test_adherence_status_false(mock_get_ack):
 
     assert response.status_code == 200
     assert response.json()["acknowledged"] is False
+
+
+# --------------------------------------------------
+# Incident-to-Policy
+# --------------------------------------------------
+
+@patch("main.openai_service.generate_policy")
+@patch("main.draft_from_incident")
+def test_draft_policy_from_incident_success(mock_draft, mock_generate):
+    mock_draft.return_value = {
+        "title": "Data Handling Policy",
+        "requirements": ["Encrypt sensitive data at rest.", "Require MFA for admin access."],
+    }
+    mock_generate.return_value = "Full generated policy content."
+
+    response = client.post(
+        "/policies/test-org/from-incident",
+        json={
+            "company_name": "Quadrant Technologies",
+            "incident_summary": "A coworker sent a phishing email and leaked passwords.",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["title"] == "Data Handling Policy"
+    assert data["requirements"] == [
+        "Encrypt sensitive data at rest.",
+        "Require MFA for admin access.",
+    ]
+    assert data["policy"] == "Full generated policy content."
+
+    mock_draft.assert_called_once_with(
+        "A coworker sent a phishing email and leaked passwords.", None
+    )
+
+    prompt_used = mock_generate.call_args[0][0]
+    assert 'titled "Data Handling Policy"' in prompt_used
+
+
+@patch("main.openai_service.generate_policy")
+@patch("main.draft_from_incident")
+def test_draft_policy_from_incident_passes_context(mock_draft, mock_generate):
+    mock_draft.return_value = {"title": "T", "requirements": ["R1"]}
+    mock_generate.return_value = "content"
+
+    client.post(
+        "/policies/test-org/from-incident",
+        json={
+            "company_name": "Quadrant Technologies",
+            "incident_summary": "Incident text here that is long enough.",
+            "context": "Follow-up: was data exposed? Yes.",
+        },
+    )
+
+    mock_draft.assert_called_once_with(
+        "Incident text here that is long enough.",
+        "Follow-up: was data exposed? Yes.",
+    )
+
+
+@patch("main.draft_from_incident")
+def test_draft_policy_from_incident_agent_failure_returns_422(mock_draft):
+    mock_draft.side_effect = IncidentPolicyAgentError("LLM call failed")
+
+    response = client.post(
+        "/policies/test-org/from-incident",
+        json={
+            "company_name": "Quadrant Technologies",
+            "incident_summary": "Incident text here that is long enough.",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+@patch("main.openai_service.generate_policy")
+@patch("main.draft_from_incident")
+def test_draft_policy_from_incident_generation_failure_returns_500(mock_draft, mock_generate):
+    mock_draft.return_value = {"title": "T", "requirements": ["R1"]}
+    mock_generate.side_effect = Exception("Azure OpenAI unavailable")
+
+    response = client.post(
+        "/policies/test-org/from-incident",
+        json={
+            "company_name": "Quadrant Technologies",
+            "incident_summary": "Incident text here that is long enough.",
+        },
+    )
+
+    assert response.status_code == 500
+
+
+def test_draft_policy_from_incident_blocks_non_hr_role():
+    app.dependency_overrides[get_current_user] = lambda: _fake_user(roles=["Manager"])
+
+    try:
+        response = client.post(
+            "/policies/test-org/from-incident",
+            json={
+                "company_name": "Quadrant Technologies",
+                "incident_summary": "Incident text here that is long enough.",
+            },
+        )
+
+        assert response.status_code == 403
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+def test_draft_policy_from_incident_blank_summary_returns_422():
+    response = client.post(
+        "/policies/test-org/from-incident",
+        json={"company_name": "Quadrant Technologies", "incident_summary": "short"},
+    )
+
+    assert response.status_code == 422

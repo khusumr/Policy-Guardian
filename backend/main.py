@@ -32,6 +32,7 @@ from training_repository import (
 )
 from adherence_repository import acknowledge, get_acknowledgment
 from training_agent import generate_metadata as generate_training_metadata, TrainingAgentError
+from incident_policy_agent import draft_from_incident, IncidentPolicyAgentError
 
 
 # --------------------------------------------------
@@ -273,6 +274,25 @@ class TrainingLinkRequest(BaseModel):
     url: str = Field(..., min_length=5, max_length=2000)
 
     @field_validator("title", "description", "category", "url")
+    @classmethod
+    def validate_not_blank(cls, value: str):
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Field cannot be blank.")
+
+        return value
+
+
+class DraftPolicyFromIncidentRequest(BaseModel):
+    company_name: str = Field(..., min_length=2, max_length=100)
+    incident_summary: str = Field(..., min_length=10, max_length=20000)
+    # Optional follow-up Q&A from the Incident Report Assistant, if the
+    # caller has it (see incident-assistant/'s ticket schema) — sharpens
+    # the draft without requiring it.
+    context: str | None = Field(default=None, max_length=5000)
+
+    @field_validator("company_name", "incident_summary")
     @classmethod
     def validate_not_blank(cls, value: str):
         value = value.strip()
@@ -1057,3 +1077,58 @@ def adherence_status(org_id: str, user=Depends(get_current_user)):
     acknowledgment = get_acknowledgment(org_id, user.object_id)
 
     return {"acknowledged": acknowledgment is not None, "acknowledgment": acknowledgment}
+
+
+# --------------------------------------------------
+# Incident-to-Policy — the "agentic" half of the incident report copy
+# button (task #7): rather than HR pasting raw incident text into the
+# custom-section form and writing the policy themselves, an agent drafts
+# a real title + requirements + generated policy content from it. This
+# is a draft only — nothing is saved until HR reviews it and calls
+# POST /policies themselves, same as any other generated policy.
+# --------------------------------------------------
+
+@app.post(
+    "/policies/{org_id}/from-incident",
+    tags=["AI Policies"],
+    summary="Draft a custom policy from an incident report (not saved)",
+)
+def draft_policy_from_incident_endpoint(
+    org_id: str,
+    request: DraftPolicyFromIncidentRequest,
+    user=Depends(require_role("HR")),
+):
+    try:
+        draft = draft_from_incident(request.incident_summary, request.context)
+    except IncidentPolicyAgentError as e:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Couldn't draft a policy from this incident ({e}). "
+                f"Use the custom section form to write one manually instead."
+            ),
+        )
+
+    try:
+        prompt = build_policy_prompt(
+            company_name=request.company_name,
+            policy_type="Custom Section",
+            tone=Tone.professional.value,
+            requirements=draft["requirements"],
+            title=draft["title"],
+        )
+        content = openai_service.generate_policy(prompt)
+    except Exception as e:
+        logger.error(f"Policy generation from incident draft failed: {e}")
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to generate policy content from the draft. Please try again.",
+        )
+
+    return {
+        "title": draft["title"],
+        "requirements": draft["requirements"],
+        "policy": content,
+        "further_reading": get_reference_links(draft["title"]),
+    }
