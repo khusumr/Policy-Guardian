@@ -21,6 +21,7 @@ from file_service import policy_to_docx_bytes, policy_to_pdf_bytes
 from document_parser import extract_text_from_upload, UnsupportedFileTypeError
 from search_service import get_reference_links
 from auth import get_current_user, require_role
+from signature_repository import sign_policy, get_signature, list_signatures
 
 
 # --------------------------------------------------
@@ -232,6 +233,23 @@ class AskAIRequest(BaseModel):
 class UpdatePolicyRequest(BaseModel):
     content: str = Field(..., min_length=10, max_length=20000)
     edited_by: str | None = None
+
+
+class SignPolicyRequest(BaseModel):
+    # The name the user types to sign, e.g. "Jane Doe" — kept separate
+    # from their authenticated identity (see PolicySignature) so this is
+    # "how they want their name recorded," not "who they are."
+    signed_name: str = Field(..., min_length=2, max_length=150)
+
+    @field_validator("signed_name")
+    @classmethod
+    def validate_signed_name(cls, value: str):
+        value = value.strip()
+
+        if not value:
+            raise ValueError("signed_name cannot be blank.")
+
+        return value
 
 
 # --------------------------------------------------
@@ -600,6 +618,67 @@ def policy_history(
     user=Depends(require_role("HR")),
 ):
     return get_policy_history(org_id, policy_id)
+
+
+# --------------------------------------------------
+# Policy Signatures
+# --------------------------------------------------
+
+@app.post(
+    "/policies/{org_id}/{policy_id}/sign",
+    tags=["Policy Signatures"],
+    summary="Sign a policy as the current user",
+)
+def sign_policy_endpoint(
+    org_id: str,
+    policy_id: str,
+    request: SignPolicyRequest,
+    user=Depends(get_current_user),
+):
+    policy = get_policy(org_id, policy_id)
+
+    if not policy:
+        raise HTTPException(status_code=404, detail="Policy not found")
+
+    signature = sign_policy(
+        org_id,
+        policy_id,
+        signer_user_id=user.object_id,
+        signer_roles=user.roles,
+        signed_name=request.signed_name,
+    )
+
+    logger.info(f"Policy {policy_id} signed by user {user.object_id} for org {org_id}")
+
+    return signature
+
+
+@app.get(
+    "/policies/{org_id}/{policy_id}/signed-by-me",
+    tags=["Policy Signatures"],
+    summary="Check whether the current user has signed a policy",
+)
+def signed_by_me(
+    org_id: str,
+    policy_id: str,
+    user=Depends(get_current_user),
+):
+    signature = get_signature(org_id, policy_id, user.object_id)
+
+    return {"signed": signature is not None, "signature": signature}
+
+
+@app.get(
+    "/policies/{org_id}/{policy_id}/signatures",
+    tags=["Policy Signatures"],
+    summary="List everyone who has signed a policy (HR/Manager progress view)",
+)
+def policy_signatures(
+    org_id: str,
+    policy_id: str,
+    user=Depends(require_role("HR", "Manager")),
+):
+    return list_signatures(org_id, policy_id)
 
 
 # --------------------------------------------------

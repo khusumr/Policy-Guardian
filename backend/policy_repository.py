@@ -79,8 +79,8 @@ def list_policies(org_id: str) -> list[StoredPolicy]:
     blob_names = storage.list_blobs(prefix=f"{org_id}/")
     policies = []
     for name in blob_names:
-        if "/versions/" in name:
-            continue  # skip version snapshots
+        if "/versions/" in name or "/signatures/" in name:
+            continue  # skip version snapshots and signature records
         data = storage.load_json(name)
         if data:
             policies.append(StoredPolicy(**data))
