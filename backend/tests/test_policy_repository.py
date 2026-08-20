@@ -94,4 +94,28 @@ def test_list_policies_skips_version_blobs(mock_storage):
     result = policy_repository.list_policies("org1")
 
     assert len(result) == 1
+
+
+def test_list_policies_skips_per_user_blobs(mock_storage):
+    # Regression test: assignment/adherence records live under
+    # {org_id}/users/... and don't parse as StoredPolicy — this used to
+    # 500 GET /policies/{org_id} for any org with an assignment record.
+    mock_storage.list_blobs.return_value = [
+        "org1/policy-1.json",
+        "org1/users/intern-1/assignments/policy-1.json",
+        "org1/users/intern-1/adherence.json",
+    ]
+    mock_storage.load_json.return_value = {
+        "id": "policy-1",
+        "company_name": "Acme",
+        "policy_type": "WFH",
+        "tone": "Professional",
+        "requirements": ["test"],
+        "content": "Sample content",
+    }
+
+    result = policy_repository.list_policies("org1")
+
+    assert len(result) == 1
+    mock_storage.load_json.assert_called_once_with("org1/policy-1.json")
     mock_storage.load_json.assert_called_once_with("org1/policy-1.json")

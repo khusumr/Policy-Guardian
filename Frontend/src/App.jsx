@@ -19,6 +19,8 @@ const DASHBOARDS = {
   employee: EmployeeDashboard,
 };
 
+const DEV_USER_KEY = "devUser";
+
 function App() {
   const { instance, accounts } = useMsal();
   const [view, setView] = useState("landing"); // "landing" | "login" — only matters while signed out
@@ -26,14 +28,27 @@ function App() {
   // Dev-only bypass account — see Login.jsx's DEV_MOCK_LOGIN flag. Stays
   // null (and unreachable) unless that flag is on; real MSAL accounts
   // below take priority regardless, so this never masks a real sign-in.
-  const [devUser, setDevUser] = useState(null); // { name, dashboardKey } | null
+  // Persisted to sessionStorage (same storage MSAL itself uses) so a dev
+  // bypass session also survives a refresh, not just real MSAL logins —
+  // MSAL already persists its own accounts across refresh via its cache,
+  // this just brings the dev path to the same behavior.
+  const [devUser, setDevUser] = useState(() => {
+    const stored = sessionStorage.getItem(DEV_USER_KEY);
+    return stored ? JSON.parse(stored) : null;
+  });
 
   useEffect(() => {
     applyPrefs(getPrefs());
   }, []);
 
+  function handleDevSignIn(user) {
+    sessionStorage.setItem(DEV_USER_KEY, JSON.stringify(user));
+    setDevUser(user);
+  }
+
   function handleLogout() {
     if (devUser) {
+      sessionStorage.removeItem(DEV_USER_KEY);
       setDevUser(null);
       return;
     }
@@ -62,7 +77,7 @@ function App() {
     return view === "landing" ? (
       <Landing onGetStarted={() => setView("login")} />
     ) : (
-      <Login onDevSignIn={setDevUser} />
+      <Login onDevSignIn={handleDevSignIn} />
     );
   }
 

@@ -8,6 +8,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 from fastapi.testclient import TestClient
 from main import app
 from document_parser import UnsupportedFileTypeError
+from incident_policy_agent import IncidentPolicyAgentError
 from auth import get_current_user, CurrentUser
 
 
@@ -857,3 +858,529 @@ def test_edit_policy_blocks_non_hr_role(mock_update):
         mock_update.assert_not_called()
     finally:
         app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+# --------------------------------------------------
+# Policy Signatures
+# --------------------------------------------------
+
+@patch("main.sign_policy")
+@patch("main.get_policy")
+def test_sign_policy_success(mock_get_policy, mock_sign):
+    mock_get_policy.return_value = SimpleNamespace(id="policy-1")
+    mock_sign.return_value = {
+        "policy_id": "policy-1",
+        "signer_user_id": "test-oid",
+        "signer_roles": ["HR"],
+        "signed_name": "Jane Doe",
+    }
+
+    response = client.post(
+        "/policies/test-org/policy-1/sign",
+        json={"signed_name": "Jane Doe"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["signed_name"] == "Jane Doe"
+
+    mock_sign.assert_called_once_with(
+        "test-org",
+        "policy-1",
+        signer_user_id="test-oid",
+        signer_roles=["HR"],
+        signed_name="Jane Doe",
+    )
+
+
+@patch("main.get_policy")
+def test_sign_policy_not_found(mock_get_policy):
+    mock_get_policy.return_value = None
+
+    response = client.post(
+        "/policies/test-org/missing-policy/sign",
+        json={"signed_name": "Jane Doe"},
+    )
+
+    assert response.status_code == 404
+
+
+def test_sign_policy_blank_name_returns_422():
+    response = client.post(
+        "/policies/test-org/policy-1/sign",
+        json={"signed_name": "  "},
+    )
+
+    assert response.status_code == 422
+
+
+def test_sign_policy_requires_authentication():
+    app.dependency_overrides.pop(get_current_user, None)
+
+    try:
+        response = client.post(
+            "/policies/test-org/policy-1/sign",
+            json={"signed_name": "Jane Doe"},
+        )
+
+        assert response.status_code == 401
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+@patch("main.get_signature")
+def test_signed_by_me_true(mock_get_signature):
+    mock_get_signature.return_value = {
+        "policy_id": "policy-1",
+        "signer_user_id": "test-oid",
+        "signed_name": "Jane Doe",
+    }
+
+    response = client.get("/policies/test-org/policy-1/signed-by-me")
+
+    assert response.status_code == 200
+    assert response.json()["signed"] is True
+
+
+@patch("main.get_signature")
+def test_signed_by_me_false(mock_get_signature):
+    mock_get_signature.return_value = None
+
+    response = client.get("/policies/test-org/policy-1/signed-by-me")
+
+    assert response.status_code == 200
+    assert response.json()["signed"] is False
+
+
+@patch("main.list_signatures")
+def test_policy_signatures_allows_hr_and_manager(mock_list_signatures):
+    mock_list_signatures.return_value = []
+
+    for role in ("HR", "Manager"):
+        app.dependency_overrides[get_current_user] = lambda role=role: _fake_user(roles=[role])
+        response = client.get("/policies/test-org/policy-1/signatures")
+        assert response.status_code == 200
+
+    app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+def test_policy_signatures_blocks_intern():
+    app.dependency_overrides[get_current_user] = lambda: _fake_user(roles=["Intern"])
+
+    try:
+        response = client.get("/policies/test-org/policy-1/signatures")
+
+        assert response.status_code == 403
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+# --------------------------------------------------
+# Policy Assignments
+# --------------------------------------------------
+
+@patch("main.assign_policy")
+@patch("main.get_policy")
+def test_assign_policy_success(mock_get_policy, mock_assign):
+    mock_get_policy.return_value = SimpleNamespace(
+        id="policy-1", title=None, policy_type="Code of Conduct"
+    )
+    mock_assign.side_effect = lambda org_id, policy_id, **kwargs: {
+        "policy_id": policy_id,
+        **kwargs,
+    }
+
+    response = client.post(
+        "/policies/test-org/policy-1/assign",
+        json={"user_ids": ["intern-1", "intern-2"]},
+    )
+
+    assert response.status_code == 200
+    assert len(response.json()) == 2
+    assert mock_assign.call_count == 2
+
+    mock_assign.assert_any_call(
+        "test-org",
+        "policy-1",
+        policy_name="Code of Conduct",
+        assigned_to_user_id="intern-1",
+        assigned_by_user_id="test-oid",
+    )
+
+
+@patch("main.get_policy")
+def test_assign_policy_not_found(mock_get_policy):
+    mock_get_policy.return_value = None
+
+    response = client.post(
+        "/policies/test-org/missing-policy/assign",
+        json={"user_ids": ["intern-1"]},
+    )
+
+    assert response.status_code == 404
+
+
+def test_assign_policy_blocks_non_hr_role():
+    app.dependency_overrides[get_current_user] = lambda: _fake_user(roles=["Manager"])
+
+    try:
+        response = client.post(
+            "/policies/test-org/policy-1/assign",
+            json={"user_ids": ["intern-1"]},
+        )
+
+        assert response.status_code == 403
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+@patch("main.get_signature")
+@patch("main.list_user_assignments")
+def test_user_progress_computes_signed_count(mock_list_assignments, mock_get_signature):
+    mock_list_assignments.return_value = [
+        SimpleNamespace(policy_id="policy-1", policy_name="Code of Conduct"),
+        SimpleNamespace(policy_id="policy-2", policy_name="Security Policy"),
+    ]
+    # Signed the first, not the second.
+    mock_get_signature.side_effect = lambda org_id, policy_id, user_id: (
+        {"policy_id": policy_id} if policy_id == "policy-1" else None
+    )
+
+    response = client.get("/policies/test-org/users/test-oid/progress")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["assigned"] == 2
+    assert data["signed"] == 1
+    assert data["policies"][0]["signed"] is True
+    assert data["policies"][1]["signed"] is False
+
+
+@patch("main.list_user_assignments")
+def test_user_progress_own_progress_always_allowed(mock_list_assignments):
+    mock_list_assignments.return_value = []
+    app.dependency_overrides[get_current_user] = lambda: _fake_user(roles=["Intern"])
+
+    try:
+        response = client.get("/policies/test-org/users/test-oid/progress")
+
+        assert response.status_code == 200
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+def test_user_progress_others_blocked_for_non_hr_manager():
+    app.dependency_overrides[get_current_user] = lambda: _fake_user(roles=["Intern"])
+
+    try:
+        response = client.get("/policies/test-org/users/someone-else/progress")
+
+        assert response.status_code == 403
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+@patch("main.list_user_assignments")
+def test_user_progress_others_allowed_for_manager(mock_list_assignments):
+    mock_list_assignments.return_value = []
+    app.dependency_overrides[get_current_user] = lambda: _fake_user(roles=["Manager"])
+
+    try:
+        response = client.get("/policies/test-org/users/someone-else/progress")
+
+        assert response.status_code == 200
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+# --------------------------------------------------
+# Training Resources
+# --------------------------------------------------
+
+@patch("main.create_link_resource")
+def test_add_training_link_success(mock_create):
+    mock_create.return_value = {
+        "id": "resource-1",
+        "title": "Onboarding Video",
+        "resource_type": "link",
+    }
+
+    response = client.post(
+        "/training/test-org/link",
+        json={
+            "title": "Onboarding Video",
+            "description": "Intro to company culture",
+            "category": "Onboarding",
+            "url": "https://example.com/video",
+        },
+    )
+
+    assert response.status_code == 200
+    mock_create.assert_called_once_with(
+        "test-org",
+        title="Onboarding Video",
+        description="Intro to company culture",
+        category="Onboarding",
+        url="https://example.com/video",
+        uploaded_by_user_id="test-oid",
+    )
+
+
+def test_add_training_link_blocks_non_hr_role():
+    app.dependency_overrides[get_current_user] = lambda: _fake_user(roles=["Manager"])
+
+    try:
+        response = client.post(
+            "/training/test-org/link",
+            json={
+                "title": "Onboarding Video",
+                "description": "Intro to company culture",
+                "category": "Onboarding",
+                "url": "https://example.com/video",
+            },
+        )
+
+        assert response.status_code == 403
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+@patch("main.create_file_resource")
+def test_upload_training_file_success(mock_create):
+    mock_create.return_value = {
+        "id": "resource-1",
+        "title": "Employee Handbook",
+        "resource_type": "file",
+        "original_filename": "handbook.pdf",
+    }
+
+    response = client.post(
+        "/training/test-org/upload",
+        data={
+            "title": "Employee Handbook",
+            "description": "Full handbook",
+            "category": "Handbook",
+        },
+        files={"file": ("handbook.pdf", b"fake-pdf-bytes", "application/pdf")},
+    )
+
+    assert response.status_code == 200
+    mock_create.assert_called_once()
+    assert mock_create.call_args.kwargs["original_filename"] == "handbook.pdf"
+    assert mock_create.call_args.kwargs["file_bytes"] == b"fake-pdf-bytes"
+
+
+def test_upload_training_file_empty_returns_400():
+    response = client.post(
+        "/training/test-org/upload",
+        data={
+            "title": "Employee Handbook",
+            "description": "Full handbook",
+            "category": "Handbook",
+        },
+        files={"file": ("handbook.pdf", b"", "application/pdf")},
+    )
+
+    assert response.status_code == 400
+
+
+@patch("main.list_resources")
+def test_list_training_resources_allows_any_authenticated_role(mock_list):
+    mock_list.return_value = []
+    app.dependency_overrides[get_current_user] = lambda: _fake_user(roles=["Intern"])
+
+    try:
+        response = client.get("/training/test-org")
+
+        assert response.status_code == 200
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+@patch("main.get_resource_file_bytes")
+@patch("main.get_resource")
+def test_download_training_resource_success(mock_get_resource, mock_get_bytes):
+    mock_get_resource.return_value = SimpleNamespace(
+        resource_type="file", original_filename="handbook.pdf"
+    )
+    mock_get_bytes.return_value = b"fake-pdf-bytes"
+
+    response = client.get("/training/test-org/resource-1/download")
+
+    assert response.status_code == 200
+    assert response.content == b"fake-pdf-bytes"
+    assert 'filename="handbook.pdf"' in response.headers["content-disposition"]
+
+
+@patch("main.get_resource")
+def test_download_training_resource_not_found(mock_get_resource):
+    mock_get_resource.return_value = None
+
+    response = client.get("/training/test-org/missing/download")
+
+    assert response.status_code == 404
+
+
+@patch("main.get_resource")
+def test_download_training_link_resource_returns_400(mock_get_resource):
+    mock_get_resource.return_value = SimpleNamespace(
+        resource_type="link", original_filename=None
+    )
+
+    response = client.get("/training/test-org/resource-1/download")
+
+    assert response.status_code == 400
+
+
+# --------------------------------------------------
+# Adherence
+# --------------------------------------------------
+
+@patch("main.acknowledge")
+def test_acknowledge_adherence_success(mock_acknowledge):
+    mock_acknowledge.return_value = {"org_id": "test-org", "user_id": "test-oid"}
+
+    response = client.post("/adherence/test-org/acknowledge")
+
+    assert response.status_code == 200
+    mock_acknowledge.assert_called_once_with("test-org", "test-oid")
+
+
+@patch("main.get_acknowledgment")
+def test_adherence_status_true(mock_get_ack):
+    mock_get_ack.return_value = {"org_id": "test-org", "user_id": "test-oid"}
+
+    response = client.get("/adherence/test-org/acknowledged-by-me")
+
+    assert response.status_code == 200
+    assert response.json()["acknowledged"] is True
+
+
+@patch("main.get_acknowledgment")
+def test_adherence_status_false(mock_get_ack):
+    mock_get_ack.return_value = None
+
+    response = client.get("/adherence/test-org/acknowledged-by-me")
+
+    assert response.status_code == 200
+    assert response.json()["acknowledged"] is False
+
+
+# --------------------------------------------------
+# Incident-to-Policy
+# --------------------------------------------------
+
+@patch("main.openai_service.generate_policy")
+@patch("main.draft_from_incident")
+def test_draft_policy_from_incident_success(mock_draft, mock_generate):
+    mock_draft.return_value = {
+        "title": "Data Handling Policy",
+        "requirements": ["Encrypt sensitive data at rest.", "Require MFA for admin access."],
+    }
+    mock_generate.return_value = "Full generated policy content."
+
+    response = client.post(
+        "/policies/test-org/from-incident",
+        json={
+            "company_name": "Quadrant Technologies",
+            "incident_summary": "A coworker sent a phishing email and leaked passwords.",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["title"] == "Data Handling Policy"
+    assert data["requirements"] == [
+        "Encrypt sensitive data at rest.",
+        "Require MFA for admin access.",
+    ]
+    assert data["policy"] == "Full generated policy content."
+
+    mock_draft.assert_called_once_with(
+        "A coworker sent a phishing email and leaked passwords.", None
+    )
+
+    prompt_used = mock_generate.call_args[0][0]
+    assert 'titled "Data Handling Policy"' in prompt_used
+
+
+@patch("main.openai_service.generate_policy")
+@patch("main.draft_from_incident")
+def test_draft_policy_from_incident_passes_context(mock_draft, mock_generate):
+    mock_draft.return_value = {"title": "T", "requirements": ["R1"]}
+    mock_generate.return_value = "content"
+
+    client.post(
+        "/policies/test-org/from-incident",
+        json={
+            "company_name": "Quadrant Technologies",
+            "incident_summary": "Incident text here that is long enough.",
+            "context": "Follow-up: was data exposed? Yes.",
+        },
+    )
+
+    mock_draft.assert_called_once_with(
+        "Incident text here that is long enough.",
+        "Follow-up: was data exposed? Yes.",
+    )
+
+
+@patch("main.draft_from_incident")
+def test_draft_policy_from_incident_agent_failure_returns_422(mock_draft):
+    mock_draft.side_effect = IncidentPolicyAgentError("LLM call failed")
+
+    response = client.post(
+        "/policies/test-org/from-incident",
+        json={
+            "company_name": "Quadrant Technologies",
+            "incident_summary": "Incident text here that is long enough.",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+@patch("main.openai_service.generate_policy")
+@patch("main.draft_from_incident")
+def test_draft_policy_from_incident_generation_failure_returns_500(mock_draft, mock_generate):
+    mock_draft.return_value = {"title": "T", "requirements": ["R1"]}
+    mock_generate.side_effect = Exception("Azure OpenAI unavailable")
+
+    response = client.post(
+        "/policies/test-org/from-incident",
+        json={
+            "company_name": "Quadrant Technologies",
+            "incident_summary": "Incident text here that is long enough.",
+        },
+    )
+
+    assert response.status_code == 500
+
+
+def test_draft_policy_from_incident_blocks_non_hr_role():
+    app.dependency_overrides[get_current_user] = lambda: _fake_user(roles=["Manager"])
+
+    try:
+        response = client.post(
+            "/policies/test-org/from-incident",
+            json={
+                "company_name": "Quadrant Technologies",
+                "incident_summary": "Incident text here that is long enough.",
+            },
+        )
+
+        assert response.status_code == 403
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: _fake_user()
+
+
+def test_draft_policy_from_incident_blank_summary_returns_422():
+    response = client.post(
+        "/policies/test-org/from-incident",
+        json={"company_name": "Quadrant Technologies", "incident_summary": "short"},
+    )
+
+    assert response.status_code == 422
