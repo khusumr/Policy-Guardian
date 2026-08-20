@@ -26,7 +26,7 @@ function SectionGenerate({ role, sectionType, onSectionCreated }) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...(authHeader && { Authorization: authHeader }),
+            ...(authHeader || {}),
           },
           body: JSON.stringify({
             company_name: "Bug Busters",

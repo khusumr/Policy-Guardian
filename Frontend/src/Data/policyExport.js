@@ -19,7 +19,7 @@ async function saveSectionToBackend(section) {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          ...(authHeader && { Authorization: authHeader }),
+          ...(authHeader || {}),
         },
         body: JSON.stringify({
           content: section.content,
@@ -44,7 +44,7 @@ async function saveSectionToBackend(section) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(authHeader && { Authorization: authHeader }),
+      ...(authHeader || {}),
     },
     body: JSON.stringify({
       company_name: "Bug Busters",
@@ -66,7 +66,7 @@ export async function getPolicyHistory(policyId) {
   const authHeader = await getAuthHeader();
 
   const response = await fetch(`${BACKEND_URL}/policies/${ORG_ID}/${policyId}/history`, {
-    headers: authHeader ? { Authorization: authHeader } : undefined,
+    headers: authHeader || undefined,
   });
 
   if (!response.ok) {
@@ -79,7 +79,7 @@ export async function getPolicyHistory(policyId) {
 async function downloadBlob(url, filename) {
   const authHeader = await getAuthHeader();
   const response = await fetch(url, {
-    headers: authHeader ? { Authorization: authHeader } : undefined,
+    headers: authHeader || undefined,
   });
 
   if (!response.ok) {

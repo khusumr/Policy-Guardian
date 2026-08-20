@@ -15,12 +15,15 @@ function trim(text, max = 120) {
 // --------------------------------------------------
 
 export async function askAIAboutText(question, highlightedText) {
+  const authHeader = await getAuthHeader();
+
   const response = await fetch(
     "https://app-ai-policy-backend.azurewebsites.net/ask-ai",
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...(authHeader || {}),
       },
       body: JSON.stringify({
         highlighted_text: highlightedText,
@@ -52,7 +55,7 @@ export async function rewordText(instruction, highlightedText) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(authHeader && { Authorization: authHeader }),
+        ...(authHeader || {}),
       },
       body: JSON.stringify({
         current_policy: highlightedText,
