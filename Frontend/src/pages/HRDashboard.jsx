@@ -12,6 +12,7 @@ import SignedRecord from "./SignedRecord";
 import TopNav from "../components/ui/TopNav";
 import Button from "../components/ui/Button";
 import Tag from "../components/ui/Tag";
+import MiniChatWidget from "../components/chat/MiniChatWidget";
 
 import {
   getSections,
@@ -420,6 +421,8 @@ function HRDashboard({ user, onLogout }) {
           </div>
         </div>
       )}
+
+      <MiniChatWidget title="Ask Policy Guardian" placeholder="Ask a question..." />
     </div>
   );
 }
