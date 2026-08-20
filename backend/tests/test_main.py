@@ -8,6 +8,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 from fastapi.testclient import TestClient
 from main import app
 from document_parser import UnsupportedFileTypeError
+from training_agent import TrainingAgentError
 from incident_policy_agent import IncidentPolicyAgentError
 from auth import get_current_user, CurrentUser
 
@@ -1180,6 +1181,97 @@ def test_upload_training_file_empty_returns_400():
             "category": "Handbook",
         },
         files={"file": ("handbook.pdf", b"", "application/pdf")},
+    )
+
+    assert response.status_code == 400
+
+
+@patch("main.create_file_resource")
+@patch("main.generate_training_metadata")
+@patch("main.extract_text_from_upload")
+def test_upload_training_file_without_metadata_uses_agent(
+    mock_extract, mock_generate, mock_create
+):
+    mock_extract.return_value = "This handbook covers remote work policy..."
+    mock_generate.return_value = {
+        "title": "Remote Work Handbook",
+        "description": "Covers remote work eligibility.",
+        "category": "Handbook",
+    }
+    mock_create.return_value = {"id": "resource-1"}
+
+    response = client.post(
+        "/training/test-org/upload",
+        data={},
+        files={"file": ("handbook.pdf", b"fake-pdf-bytes", "application/pdf")},
+    )
+
+    assert response.status_code == 200
+    mock_extract.assert_called_once_with("handbook.pdf", b"fake-pdf-bytes")
+    mock_generate.assert_called_once_with(
+        "handbook.pdf", "This handbook covers remote work policy..."
+    )
+    mock_create.assert_called_once_with(
+        "test-org",
+        title="Remote Work Handbook",
+        description="Covers remote work eligibility.",
+        category="Handbook",
+        original_filename="handbook.pdf",
+        file_bytes=b"fake-pdf-bytes",
+        uploaded_by_user_id="test-oid",
+    )
+
+
+@patch("main.create_file_resource")
+@patch("main.generate_training_metadata")
+@patch("main.extract_text_from_upload")
+def test_upload_training_file_partial_metadata_fills_only_gaps(
+    mock_extract, mock_generate, mock_create
+):
+    mock_extract.return_value = "some content"
+    mock_generate.return_value = {
+        "title": "Agent Title",
+        "description": "Agent description.",
+        "category": "Handbook",
+    }
+    mock_create.return_value = {"id": "resource-1"}
+
+    response = client.post(
+        "/training/test-org/upload",
+        data={"title": "HR-Provided Title"},
+        files={"file": ("handbook.pdf", b"fake-pdf-bytes", "application/pdf")},
+    )
+
+    assert response.status_code == 200
+    # HR's title wins, the two gaps get filled by the agent.
+    assert mock_create.call_args.kwargs["title"] == "HR-Provided Title"
+    assert mock_create.call_args.kwargs["description"] == "Agent description."
+    assert mock_create.call_args.kwargs["category"] == "Handbook"
+
+
+@patch("main.generate_training_metadata")
+@patch("main.extract_text_from_upload")
+def test_upload_training_file_agent_failure_returns_422(mock_extract, mock_generate):
+    mock_extract.return_value = "some content"
+    mock_generate.side_effect = TrainingAgentError("LLM call failed")
+
+    response = client.post(
+        "/training/test-org/upload",
+        data={},
+        files={"file": ("handbook.pdf", b"fake-pdf-bytes", "application/pdf")},
+    )
+
+    assert response.status_code == 422
+
+
+@patch("main.extract_text_from_upload")
+def test_upload_training_file_unsupported_type_without_metadata(mock_extract):
+    mock_extract.side_effect = UnsupportedFileTypeError("Unsupported file type for 'x.exe'.")
+
+    response = client.post(
+        "/training/test-org/upload",
+        data={},
+        files={"file": ("x.exe", b"fake-bytes", "application/octet-stream")},
     )
 
     assert response.status_code == 400

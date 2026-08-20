@@ -31,6 +31,7 @@ from training_repository import (
     list_resources,
 )
 from adherence_repository import acknowledge, get_acknowledgment
+from training_agent import generate_metadata as generate_training_metadata, TrainingAgentError
 from incident_policy_agent import draft_from_incident, IncidentPolicyAgentError
 
 
@@ -963,9 +964,13 @@ def add_training_link(
 )
 async def upload_training_file(
     org_id: str,
-    title: str = Form(...),
-    description: str = Form(...),
-    category: str = Form(...),
+    # All optional — the whole point is HR shouldn't have to type these.
+    # An agent generates whichever ones aren't provided, from the
+    # document's actual content. Still overridable per-field if HR wants
+    # to correct or skip the AI for a specific upload.
+    title: str | None = Form(default=None),
+    description: str | None = Form(default=None),
+    category: str | None = Form(default=None),
     file: UploadFile = File(...),
     user=Depends(require_role("HR")),
 ):
@@ -973,6 +978,25 @@ async def upload_training_file(
 
     if not file_bytes:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    if not (title and description and category):
+        try:
+            extracted_text = extract_text_from_upload(file.filename, file_bytes)
+            generated = generate_training_metadata(file.filename, extracted_text)
+        except UnsupportedFileTypeError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except TrainingAgentError as e:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"Couldn't auto-generate title/description/category "
+                    f"for this file ({e}). Provide them manually instead."
+                ),
+            )
+
+        title = title or generated["title"]
+        description = description or generated["description"]
+        category = category or generated["category"]
 
     return create_file_resource(
         org_id,
