@@ -242,6 +242,65 @@ def test_generate_policy_openai_failure(mock_generate):
 
 
 @patch("main.openai_service.generate_policy")
+def test_policy_chat_returns_follow_up_question(mock_generate):
+    mock_generate.return_value = "Who does this policy apply to?"
+
+    response = client.post(
+        "/policy-chat",
+        json={
+            "messages": [
+                {"role": "user", "text": "I want a policy about pets in the office."}
+            ]
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"reply": "Who does this policy apply to?"}
+
+    mock_generate.assert_called_once()
+
+
+@patch("main.openai_service.generate_policy")
+def test_policy_chat_can_signal_ready(mock_generate):
+    mock_generate.return_value = "READY"
+
+    response = client.post(
+        "/policy-chat",
+        json={
+            "messages": [
+                {"role": "user", "text": "Pets are allowed for all full-time staff."},
+                {"role": "assistant", "text": "Any exceptions?"},
+                {"role": "user", "text": "No exceptions."},
+            ]
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"reply": "READY"}
+
+
+def test_policy_chat_empty_messages_returns_422():
+    response = client.post("/policy-chat", json={"messages": []})
+
+    assert response.status_code == 422
+
+
+@patch("main.openai_service.generate_policy")
+def test_policy_chat_openai_failure(mock_generate):
+    mock_generate.side_effect = Exception("Azure OpenAI unavailable")
+
+    response = client.post(
+        "/policy-chat",
+        json={"messages": [{"role": "user", "text": "A policy about pets."}]},
+    )
+
+    assert response.status_code == 500
+    assert response.json() == {
+        "detail": "Failed to get a response. Please try again."
+    }
+
+
+@patch("main.openai_service.generate_policy")
 def test_refine_policy_openai_failure(mock_generate):
     mock_generate.side_effect = Exception("Azure OpenAI unavailable")
 

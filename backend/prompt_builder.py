@@ -44,3 +44,29 @@ Return only the completed policy document.
 """
 
     return prompt.strip()
+
+
+def build_policy_chat_prompt(messages: list[dict]) -> str:
+    conversation_text = "\n".join(
+        f"{'HR' if m['role'] == 'user' else 'Assistant'}: {m['text']}"
+        for m in messages
+    )
+    prompt = f"""
+You are an HR policy consultant helping someone draft a new company policy
+section through a short conversation.
+
+Conversation so far:
+{conversation_text}
+
+Ask ONE focused follow-up question that would help you understand what this
+policy should actually say — who it applies to, the specific rules, or any
+exceptions. Base it on what has and hasn't been covered already; do not
+repeat something already answered.
+
+If the conversation already covers enough (who it applies to, the key
+rules, and any exceptions) to draft a complete policy, respond with exactly:
+READY
+
+Return only the question, or the word READY — nothing else.
+"""
+    return prompt.strip()

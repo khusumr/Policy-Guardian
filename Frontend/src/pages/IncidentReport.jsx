@@ -12,7 +12,7 @@ import LoadingDots from "../components/ui/LoadingDots";
 // an incident, then generate a summary + suggested next steps. Nothing
 // here is saved or sent anywhere — it only lives in this component's
 // state for the current session.
-function IncidentReport() {
+function IncidentReport({ onCancel }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -75,6 +75,11 @@ function IncidentReport() {
 
   return (
     <div className="incident-page">
+      {onCancel && (
+        <button className="link-button" onClick={onCancel} style={{ marginBottom: 8 }}>
+          ← Back to Policies
+        </button>
+      )}
       <h1>Incident Report Assistant</h1>
       <p className="editor-hint">
         Describe what happened in your own words. This conversation isn't saved or sent to
