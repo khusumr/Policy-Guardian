@@ -79,8 +79,11 @@ def list_policies(org_id: str) -> list[StoredPolicy]:
     blob_names = storage.list_blobs(prefix=f"{org_id}/")
     policies = []
     for name in blob_names:
-        if "/versions/" in name or "/signatures/" in name:
-            continue  # skip version snapshots and signature records
+        # Skip version snapshots, signature records, and anything under
+        # {org_id}/users/... (assignments, adherence acknowledgments, and
+        # any future per-user data) — none of these parse as StoredPolicy.
+        if "/versions/" in name or "/signatures/" in name or f"{org_id}/users/" in name:
+            continue
         data = storage.load_json(name)
         if data:
             policies.append(StoredPolicy(**data))

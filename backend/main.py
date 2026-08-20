@@ -23,6 +23,14 @@ from search_service import get_reference_links
 from auth import get_current_user, require_role
 from signature_repository import sign_policy, get_signature, list_signatures
 from assignment_repository import assign_policy, list_user_assignments
+from training_repository import (
+    create_link_resource,
+    create_file_resource,
+    get_resource,
+    get_resource_file_bytes,
+    list_resources,
+)
+from adherence_repository import acknowledge, get_acknowledgment
 
 
 # --------------------------------------------------
@@ -255,6 +263,23 @@ class SignPolicyRequest(BaseModel):
 
 class AssignPolicyRequest(BaseModel):
     user_ids: list[str] = Field(..., min_length=1, max_length=200)
+
+
+class TrainingLinkRequest(BaseModel):
+    title: str = Field(..., min_length=2, max_length=150)
+    description: str = Field(..., min_length=2, max_length=500)
+    category: str = Field(..., min_length=2, max_length=100)
+    url: str = Field(..., min_length=5, max_length=2000)
+
+    @field_validator("title", "description", "category", "url")
+    @classmethod
+    def validate_not_blank(cls, value: str):
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Field cannot be blank.")
+
+        return value
 
 
 # --------------------------------------------------
@@ -883,3 +908,128 @@ def export_policy_pdf(
             status_code=500,
             detail="Failed to export policy as PDF.",
         )
+
+
+# --------------------------------------------------
+# Training Resources — onboarding "Train" section: handbook, articles,
+# training links. Creating/uploading is HR only; viewing is open to
+# everyone, since the whole point is that employees can access these.
+# --------------------------------------------------
+
+@app.post(
+    "/training/{org_id}/link",
+    tags=["Training"],
+    summary="Add a training resource that's an external link",
+)
+def add_training_link(
+    org_id: str,
+    request: TrainingLinkRequest,
+    user=Depends(require_role("HR")),
+):
+    return create_link_resource(
+        org_id,
+        title=request.title,
+        description=request.description,
+        category=request.category,
+        url=request.url,
+        uploaded_by_user_id=user.object_id,
+    )
+
+
+@app.post(
+    "/training/{org_id}/upload",
+    tags=["Training"],
+    summary="Upload a training document (e.g. the employee handbook)",
+)
+async def upload_training_file(
+    org_id: str,
+    title: str = Form(...),
+    description: str = Form(...),
+    category: str = Form(...),
+    file: UploadFile = File(...),
+    user=Depends(require_role("HR")),
+):
+    file_bytes = await file.read()
+
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    return create_file_resource(
+        org_id,
+        title=title,
+        description=description,
+        category=category,
+        original_filename=file.filename,
+        file_bytes=file_bytes,
+        uploaded_by_user_id=user.object_id,
+    )
+
+
+@app.get(
+    "/training/{org_id}",
+    tags=["Training"],
+    summary="List all training resources for an org",
+)
+def list_training_resources(org_id: str, user=Depends(get_current_user)):
+    return list_resources(org_id)
+
+
+@app.get(
+    "/training/{org_id}/{resource_id}/download",
+    tags=["Training"],
+    summary="Download a training file resource",
+)
+def download_training_resource(
+    org_id: str,
+    resource_id: str,
+    user=Depends(get_current_user),
+):
+    resource = get_resource(org_id, resource_id)
+
+    if not resource:
+        raise HTTPException(status_code=404, detail="Training resource not found")
+
+    if resource.resource_type != "file":
+        raise HTTPException(
+            status_code=400,
+            detail="This resource is a link, not a downloadable file.",
+        )
+
+    file_bytes = get_resource_file_bytes(org_id, resource_id)
+
+    if file_bytes is None:
+        raise HTTPException(status_code=404, detail="File content not found")
+
+    return StreamingResponse(
+        BytesIO(file_bytes),
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": f'attachment; filename="{resource.original_filename}"'
+        },
+    )
+
+
+# --------------------------------------------------
+# Adherence — onboarding "Adhere" section: one org-wide acknowledgment
+# per user. Frontend gates other features on this; the backend just
+# persists who has and hasn't acknowledged.
+# --------------------------------------------------
+
+@app.post(
+    "/adherence/{org_id}/acknowledge",
+    tags=["Adherence"],
+    summary="Acknowledge the company's general rules",
+)
+def acknowledge_adherence(org_id: str, user=Depends(get_current_user)):
+    return acknowledge(org_id, user.object_id)
+
+
+@app.get(
+    "/adherence/{org_id}/acknowledged-by-me",
+    tags=["Adherence"],
+    summary="Check whether the current user has acknowledged the company's general rules",
+)
+def adherence_status(org_id: str, user=Depends(get_current_user)):
+    acknowledgment = get_acknowledgment(org_id, user.object_id)
+
+    return {"acknowledged": acknowledgment is not None, "acknowledgment": acknowledgment}
