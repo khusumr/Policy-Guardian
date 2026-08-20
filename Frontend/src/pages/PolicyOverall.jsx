@@ -15,7 +15,7 @@ import Tag from "../components/ui/Tag";
 // who has already signed (the per-policy view of signatures — the
 // per-employee view lives on the HR home / Teams tables).
 
-function PolicyOverall({ role, sections, onViewRecord }) {
+function PolicyOverall({ role, sections, onViewRecord, onEditSection, onAddSection }) {
   const [sent, setSent] = useState(false);
   const [selectedRecipients, setSelectedRecipients] = useState([]);
 
@@ -55,22 +55,39 @@ function PolicyOverall({ role, sections, onViewRecord }) {
 
   return (
     <div className="policy-editor">
-      <h1>{roleLabel(role)} — Overall Policy</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+        <div>
+          <h1>{roleLabel(role)} — Overall Policy</h1>
 
-      <p className="editor-hint">
-        All sections for the {roleLabel(role)} role, combined into one
-        document.
-      </p>
+          <p className="editor-hint">
+            All sections for the {roleLabel(role)} role, combined into one
+            document.
+          </p>
+        </div>
+
+        {onAddSection && (
+          <Button variant="secondary" size="sm" onClick={() => onAddSection(role)}>
+            + Add Section
+          </Button>
+        )}
+      </div>
 
       {roleSections.length === 0 ? (
         <p className="sidebar-empty">
-          No sections yet. Add one from the sidebar.
+          No sections yet. Add one from the Home page.
         </p>
       ) : (
         <div className="overall-sections">
           {roleSections.map((section) => (
             <div className="overall-section" key={section.id}>
-              <h2>{section.title}</h2>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <h2>{section.title}</h2>
+                {onEditSection && (
+                  <button className="link-button" onClick={() => onEditSection(section)}>
+                    Edit
+                  </button>
+                )}
+              </div>
 
               {section.content.split("\n").map((line, i) => (
                 <p key={i}>{line}</p>
